@@ -1,11 +1,24 @@
 import React from 'react'
-import { Sider } from './components/Side_bar'
 import './App.css'
+
+import { Router } from '@reach/router'
+import { Home } from './Home'
+import { Admin } from './Admin'
+import { HomeAdmin } from './components/HomeAdmin'
+import { AdminUser } from './components/AdminUser'
+import { Raid } from './components/Raid'
 
 const App = () => {
 	return (
 		<div className='App'>
-			<Sider />
+			<Router>
+				<Home path='/' />
+				<Admin path='/admin'>
+					<HomeAdmin path='/' />
+					<AdminUser path='user' />
+					<Raid path='raid' />
+				</Admin>
+			</Router>
 		</div>
 	)
 }

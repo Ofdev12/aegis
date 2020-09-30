@@ -1,1 +1,8 @@
 @import '~antd/dist/antd.css';
+body {
+	background-color: #efefeff1;
+}
+
+.app {
+	display: flex;
+}
