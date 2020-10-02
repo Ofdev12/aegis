@@ -119,3 +119,7 @@ export const getRerollOrdered = (players, date) => {
 		...rerollWeighted.filter(({ rerollWeight }) => rerollWeight === null),
 	]
 }
+
+// Get the main character of a player.
+export const getMain = ({ characters }) =>
+	characters.filter(({ status }) => status === 'main')[0]

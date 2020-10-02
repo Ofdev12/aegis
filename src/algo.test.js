@@ -6,6 +6,7 @@ import {
 	computeRerollBenchWeight,
 	getBenchOrdered,
 	getRerollOrdered,
+	getMain,
 } from './algo.js'
 
 const defaultConstraints = {
@@ -292,5 +293,33 @@ test('getRerollOrdered', () => {
 			rerollWeight: null,
 		},
 	])
+})
+
+test('GetMain', () => {
+	expect(getMain(players[0])).toEqual({
+		status: 'main',
+		class: 'rogue',
+		role: 'cac',
+	})
+	expect(getMain(players[1])).toEqual({
+		status: 'main',
+		class: 'hunt',
+		role: 'dist',
+	})
+	expect(getMain(players[2])).toEqual({
+		status: 'main',
+		class: 'mage',
+		role: 'dist',
+	})
+	expect(getMain(players[3])).toEqual({
+		status: 'main',
+		class: 'war',
+		role: 'cac',
+	})
+	expect(getMain(players[4])).toEqual({
+		status: 'main',
+		class: 'war',
+		role: 'cac',
+	})
 })
 
