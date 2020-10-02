@@ -105,18 +105,18 @@ export const getBenchOrdered = (players, date, constraints) =>
 		.sort((a, b) => a.mainBenchWeigth - b.mainBenchWeigth) // ascending order
 
 // Compute the reroll weight of each players and return
-// an array sorted by ascending reroll weight. The
-// non-reroll players are placed at the end.
+// an array sorted by descending reroll weight. The
+// non-reroll players are placed at the beginning.
 export const getRerollOrdered = (players, date) => {
 	const rerollWeighted = players.map((player) => ({
 		...player,
 		rerollWeight: computeRerollWeight(player, date),
 	}))
 	return [
+		...rerollWeighted.filter(({ rerollWeight }) => rerollWeight === null),
 		...rerollWeighted
 			.filter(({ rerollWeight }) => rerollWeight !== null)
-			.sort((a, b) => a.rerollWeight - b.rerollWeight), // ascending order
-		...rerollWeighted.filter(({ rerollWeight }) => rerollWeight === null),
+			.sort((a, b) => b.rerollWeight - a.rerollWeight), // descending order
 	]
 }
 
