@@ -6,13 +6,14 @@ import {
 	SettingOutlined,
 } from '@ant-design/icons'
 import './NavBar.css'
+import { redirectToDiscord } from '../discobot/index'
 const { SubMenu } = Menu
 
-export const NavBar = () => {
+export const NavBar = ({ userInfos }) => {
 	const [current, setCurrent] = useState('mail')
 
 	const handleClick = (e) => {
-		console.log('click ', e)
+		// console.log('click ', e)
 		setCurrent(e.key)
 	}
 
@@ -39,10 +40,16 @@ export const NavBar = () => {
 					<Menu.Item key='setting:4'>Option 4</Menu.Item>
 				</Menu.ItemGroup>
 			</SubMenu>
-			<Menu.Item key='alipay'>
-				<a href='https://ant.design' target='_blank' rel='noopener noreferrer'>
-					Navigation Four - Link
-				</a>
+			<Menu.Item key='discord'>
+				<div
+					onClick={() => {
+						userInfos
+							? console.log('CONNECTED GO PROFILE')
+							: redirectToDiscord()
+					}}
+				>
+					{userInfos ? `Bonjour ${userInfos.username}` : 'Discord'}
+				</div>
 			</Menu.Item>
 		</Menu>
 	)

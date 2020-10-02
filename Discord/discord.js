@@ -16,40 +16,37 @@ router.get('/login', (req, res) => {
 	)
 })
 
-router.get(
-	'/callback',
-	catchAsync(async (req, res) => {
-		const code = req.query.code
+router.get('/callback', async (req, res) => {
+	const code = req.query.code
 
-		const data = {
-			client_id: CLIENT_ID,
-			client_secret: CLIENT_SECRET,
-			grant_type: 'authorization_code',
-			redirect_uri: 'http://localhost:50451/api/discord/callback',
-			code: code,
-			scope: 'identify',
-		}
+	const data = {
+		client_id: CLIENT_ID,
+		client_secret: CLIENT_SECRET,
+		grant_type: 'authorization_code',
+		redirect_uri: 'http://localhost:50451/api/discord/callback',
+		code: code,
+		scope: 'identify',
+	}
 
-		const getTokken = await fetch('https://discordapp.com/api/oauth2/token', {
-			method: 'POST',
-			body: new URLSearchParams(data),
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-		})
-		const jsonTokken = await getTokken.json()
-
-		const userInfo = await fetch('https://discordapp.com/api/users/@me', {
-			headers: {
-				authorization: `${jsonTokken.token_type} ${jsonTokken.access_token}`,
-			},
-		})
-		const jsonUser = await userInfo.json()
-		console.log(jsonTokken)
-		res.redirect(
-			`/?token=${jsonTokken.access_token}&username=${jsonUser.username}`
-		)
+	const getTokken = await fetch('https://discordapp.com/api/oauth2/token', {
+		method: 'POST',
+		body: new URLSearchParams(data),
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
 	})
-)
+	const jsonTokken = await getTokken.json()
+
+	const userInfo = await fetch('https://discordapp.com/api/users/@me', {
+		headers: {
+			authorization: `${jsonTokken.token_type} ${jsonTokken.access_token}`,
+		},
+	})
+	const jsonUser = await userInfo.json()
+	console.log(jsonTokken)
+	res.redirect(
+		`/?token=${jsonTokken.access_token}&username=${jsonUser.username}`
+	)
+})
 
 module.exports = router
