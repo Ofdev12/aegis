@@ -6,10 +6,10 @@ const defaultConstraints = {
 	maxPlayer: 40,
 	mainRatio: 0.5,
 	role: {
-		tank: { min: 3, max: 5, classMin: { war: 3 } },
-		heal: { min: 10, max: 12, classMin: { paladin: 3, priest: 3, drood: 1 } },
-		cac: { min: 8, max: 15, classMin: { war: 5, rogue: 3 } },
-		dist: { min: 8, max: 15, classMin: { hunt: 2, mage: 4, demo: 2 } },
+		tank: { min: 3, max: 5, pClassMin: { war: 3 } },
+		heal: { min: 10, max: 12, pClassMin: { paladin: 3, priest: 3, drood: 1 } },
+		cac: { min: 8, max: 15, pClassMin: { war: 5, rogue: 3 } },
+		dist: { min: 8, max: 15, pClassMin: { hunt: 2, mage: 4, demo: 2 } },
 	},
 }
 
@@ -75,18 +75,18 @@ const computeCustomConstraints = (customConstraints) =>
 // Apply mainRatio to a given constraint.
 export const computeMainConstraint = (constraints) => {
 	const result = {}
-	for (const [key, { min, max, classMin }] of Object.entries(
+	for (const [key, { min, max, pClassMin }] of Object.entries(
 		constraints.role
 	)) {
-		// Compute min constraint for each class.
-		const mainClassMin = {}
-		for (const [className, classConstraint] of Object.entries(classMin)) {
-			mainClassMin[className] = classConstraint * constraints.mainRatio
+		// Compute min constraint for each pClass.
+		const mainPClassMin = {}
+		for (const [pClassName, pClassConstraint] of Object.entries(pClassMin)) {
+			mainPClassMin[pClassName] = pClassConstraint * constraints.mainRatio
 		}
 		result[key] = {
 			min: min * constraints.mainRatio,
 			max,
-			classMin: mainClassMin,
+			pClassMin: mainPClassMin,
 		}
 	}
 	return result

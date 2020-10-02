@@ -13,10 +13,10 @@ const defaultConstraints = {
 	maxPlayer: 40,
 	mainRatio: 0.5,
 	role: {
-		tank: { min: 3, max: 5, classMin: { war: 3 } },
-		heal: { min: 10, max: 12, classMin: { paladin: 3, priest: 3, drood: 1 } },
-		cac: { min: 8, max: 15, classMin: { war: 5, rogue: 3 } },
-		dist: { min: 8, max: 15, classMin: { hunt: 2, mage: 4, demo: 2 } },
+		tank: { min: 3, max: 5, pClassMin: { war: 3 } },
+		heal: { min: 10, max: 12, pClassMin: { paladin: 3, priest: 3, drood: 1 } },
+		cac: { min: 8, max: 15, pClassMin: { war: 5, rogue: 3 } },
+		dist: { min: 8, max: 15, pClassMin: { hunt: 2, mage: 4, demo: 2 } },
 	},
 }
 const raidDate = '2020-09-30T00:00:00'
@@ -32,9 +32,9 @@ const players = [
 		pseudo: 'Pon',
 		rerollWanted: true,
 		characters: [
-			{ status: 'main', class: 'rogue', role: 'cac' },
-			{ status: 'mainReroll', class: 'drood', role: 'tank' },
-			{ status: 'reroll', class: 'paladin', role: 'heal' },
+			{ status: 'main', pClass: 'rogue', role: 'cac' },
+			{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+			{ status: 'reroll', pClass: 'paladin', role: 'heal' },
 		],
 	},
 	{
@@ -48,8 +48,8 @@ const players = [
 		pseudo: 'Pikachu',
 		rerollWanted: true,
 		characters: [
-			{ status: 'main', class: 'hunt', role: 'dist' },
-			{ status: 'reroll', class: 'paladin', role: 'cac' },
+			{ status: 'main', pClass: 'hunt', role: 'dist' },
+			{ status: 'reroll', pClass: 'paladin', role: 'cac' },
 		],
 	},
 	{
@@ -63,8 +63,8 @@ const players = [
 		pseudo: 'Raichu',
 		rerollWanted: true,
 		characters: [
-			{ status: 'main', class: 'mage', role: 'dist' },
-			{ status: 'reroll', class: 'war', role: 'tank' },
+			{ status: 'main', pClass: 'mage', role: 'dist' },
+			{ status: 'reroll', pClass: 'war', role: 'tank' },
 		],
 	},
 	{
@@ -78,8 +78,8 @@ const players = [
 		pseudo: 'Abo',
 		rerollWanted: false,
 		characters: [
-			{ status: 'main', class: 'war', role: 'cac' },
-			{ status: 'reroll', class: 'war', role: 'tank' },
+			{ status: 'main', pClass: 'war', role: 'cac' },
+			{ status: 'reroll', pClass: 'war', role: 'tank' },
 		],
 	},
 	{
@@ -92,7 +92,7 @@ const players = [
 		rank: 'raider',
 		pseudo: 'Abo',
 		rerollWanted: true,
-		characters: [{ status: 'main', class: 'war', role: 'cac' }],
+		characters: [{ status: 'main', pClass: 'war', role: 'cac' }],
 	},
 ]
 // DeepMerge
@@ -109,10 +109,14 @@ test('DeepMerge', () => {
 		mainRatio: 0.5,
 		pon: 'ponpon',
 		role: {
-			tank: { min: 3, max: 5, classMin: { war: 3 } },
-			heal: { min: 10, max: 12, classMin: { paladin: 3, priest: 3, drood: 1 } },
-			cac: { min: 8, max: 15, classMin: { war: 5, rogue: 3 } },
-			dist: { min: 2, max: 15, classMin: { hunt: 2, mage: 4, demo: 2 } },
+			tank: { min: 3, max: 5, pClassMin: { war: 3 } },
+			heal: {
+				min: 10,
+				max: 12,
+				pClassMin: { paladin: 3, priest: 3, drood: 1 },
+			},
+			cac: { min: 8, max: 15, pClassMin: { war: 5, rogue: 3 } },
+			dist: { min: 2, max: 15, pClassMin: { hunt: 2, mage: 4, demo: 2 } },
 		},
 	})
 	expect(deepMerge([1, 2, ['a', 'b']], [1, undefined, ['c'], 3])).toEqual([
@@ -126,14 +130,14 @@ test('DeepMerge', () => {
 // Compute Main Constraint
 test('ComputeMainConstraint', () => {
 	expect(computeMainConstraint(defaultConstraints)).toEqual({
-		tank: { min: 1.5, max: 5, classMin: { war: 1.5 } },
+		tank: { min: 1.5, max: 5, pClassMin: { war: 1.5 } },
 		heal: {
 			min: 5,
 			max: 12,
-			classMin: { paladin: 1.5, priest: 1.5, drood: 0.5 },
+			pClassMin: { paladin: 1.5, priest: 1.5, drood: 0.5 },
 		},
-		cac: { min: 4, max: 15, classMin: { war: 2.5, rogue: 1.5 } },
-		dist: { min: 4, max: 15, classMin: { hunt: 1, mage: 2, demo: 1 } },
+		cac: { min: 4, max: 15, pClassMin: { war: 2.5, rogue: 1.5 } },
+		dist: { min: 4, max: 15, pClassMin: { hunt: 1, mage: 2, demo: 1 } },
 	})
 })
 
@@ -298,28 +302,27 @@ test('getRerollOrdered', () => {
 test('GetMain', () => {
 	expect(getMain(players[0])).toEqual({
 		status: 'main',
-		class: 'rogue',
+		pClass: 'rogue',
 		role: 'cac',
 	})
 	expect(getMain(players[1])).toEqual({
 		status: 'main',
-		class: 'hunt',
+		pClass: 'hunt',
 		role: 'dist',
 	})
 	expect(getMain(players[2])).toEqual({
 		status: 'main',
-		class: 'mage',
+		pClass: 'mage',
 		role: 'dist',
 	})
 	expect(getMain(players[3])).toEqual({
 		status: 'main',
-		class: 'war',
+		pClass: 'war',
 		role: 'cac',
 	})
 	expect(getMain(players[4])).toEqual({
 		status: 'main',
-		class: 'war',
+		pClass: 'war',
 		role: 'cac',
 	})
 })
-
