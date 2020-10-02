@@ -144,3 +144,21 @@ export const fillPClassMainRatio = (players, roles) => {
 	}
 	return result
 }
+
+// Compare the number of players in the result to the expected Pclass population.
+export const analyseMissingPClass = (res, roles) => {
+	const missingPlayers = {}
+	for (const [role, { pClassMin }] of Object.entries(roles)) {
+		for (const [pClass, min] of Object.entries(pClassMin)) {
+			const nbPClassPlayers = res[role][pClass] ? res[role][pClass].length : 0
+			if (nbPClassPlayers < min) {
+				if (!missingPlayers[role]) missingPlayers[role] = {}
+				missingPlayers[role] = {
+					...missingPlayers[role],
+					[pClass]: Math.ceil(min - nbPClassPlayers),
+				}
+			}
+		}
+	}
+	return missingPlayers
+}

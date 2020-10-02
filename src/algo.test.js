@@ -8,6 +8,7 @@ import {
 	getRerollOrdered,
 	getMain,
 	fillPClassMainRatio,
+	analyseMissingPClass,
 } from './algo.js'
 
 const defaultConstraints = {
@@ -354,4 +355,76 @@ test('FillPClassMainRatio', () => {
 		cac: { war: ['Abo', 'Arbok'], rogue: ['Pon'] },
 		dist: { hunt: ['Pikachu'], mage: ['Raichu'] },
 	})
+})
+
+test('analyseMissingPClass', () => {
+	expect(
+		analyseMissingPClass(
+			{
+				tank: {},
+				heal: {},
+				cac: { war: ['Abo'] },
+				dist: {},
+			},
+			{ cac: { pClassMin: { war: 2 } } }
+		)
+	).toEqual({ cac: { war: 1 } })
+	expect(
+		analyseMissingPClass(
+			{
+				tank: {},
+				heal: {},
+				cac: { war: [1, 2, 3] },
+				dist: {},
+			},
+			{
+				cac: { pClassMin: { war: 5, rogue: 2 } },
+				tank: { pClassMin: { war: 2 } },
+				heal: { pClassMin: { paladin: 3 } },
+				dist: { pClassMin: { mage: 2, hunt: 1 } },
+			}
+		)
+	).toEqual({
+		cac: { war: 2, rogue: 2 },
+		tank: { war: 2 },
+		heal: { paladin: 3 },
+		dist: { mage: 2, hunt: 1 },
+	})
+	expect(
+		analyseMissingPClass(
+			{
+				tank: {},
+				heal: {},
+				cac: { war: [1, 2, 3] },
+				dist: {},
+			},
+			{
+				cac: { pClassMin: { war: 5, rogue: 2 } },
+				tank: { pClassMin: { war: 2 } },
+				heal: { pClassMin: { paladin: 3 } },
+				dist: { pClassMin: { mage: 2, hunt: 1 } },
+			}
+		)
+	).toEqual({
+		cac: { war: 2, rogue: 2 },
+		tank: { war: 2 },
+		heal: { paladin: 3 },
+		dist: { mage: 2, hunt: 1 },
+	})
+	expect(
+		analyseMissingPClass(
+			{
+				tank: { war: [1, 2] },
+				heal: { paladin: [1, 2, 3] },
+				cac: { war: [1, 2, 3, 4, 5], rogue: [1, 2] },
+				dist: { mage: [1, 2], hunt: [1] },
+			},
+			{
+				cac: { pClassMin: { war: 5, rogue: 2 } },
+				tank: { pClassMin: { war: 2 } },
+				heal: { pClassMin: { paladin: 3 } },
+				dist: { pClassMin: { mage: 2, hunt: 1 } },
+			}
+		)
+	).toEqual({})
 })
