@@ -123,3 +123,24 @@ export const getRerollOrdered = (players, date) => {
 // Get the main character of a player.
 export const getMain = ({ characters }) =>
 	characters.filter(({ status }) => status === 'main')[0]
+
+// Find players' mainCharacter to fit the roles.
+// The flag IsSelected is set on selected players.
+export const fillPClassMainRatio = (players, roles) => {
+	const result = { tank: {}, heal: {}, cac: {}, dist: {} }
+	for (const player of players) {
+		const { pClass, role } = getMain(player)
+		// Get role and pClass min constraint
+		const pClassMin = roles[role] !== undefined && roles[role].pClassMin[pClass]
+		if (pClassMin) {
+			// Add pClass to role object if needed.
+			if (!result[role][pClass]) result[role][pClass] = []
+			if (result[role][pClass].length < pClassMin) {
+				// Add player to result
+				result[role][pClass].push(player.pseudo)
+				player.IsSelected = true
+			}
+		}
+	}
+	return result
+}

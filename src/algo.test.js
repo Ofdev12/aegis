@@ -7,6 +7,7 @@ import {
 	getBenchOrdered,
 	getRerollOrdered,
 	getMain,
+	fillPClassMainRatio,
 } from './algo.js'
 
 const defaultConstraints = {
@@ -90,7 +91,7 @@ const players = [
 		RerollBench: 0,
 		LastRB: null,
 		rank: 'raider',
-		pseudo: 'Abo',
+		pseudo: 'Arbok',
 		rerollWanted: true,
 		characters: [{ status: 'main', pClass: 'war', role: 'cac' }],
 	},
@@ -324,5 +325,33 @@ test('GetMain', () => {
 		status: 'main',
 		pClass: 'war',
 		role: 'cac',
+	})
+})
+
+test('FillPClassMainRatio', () => {
+	expect(
+		fillPClassMainRatio(players, { cac: { pClassMin: { war: 1 } } })
+	).toEqual({
+		tank: {},
+		heal: {},
+		cac: { war: ['Abo'] },
+		dist: {},
+	})
+	expect(
+		fillPClassMainRatio(players, {
+			tank: { pClassMin: { drood: 1 } },
+			cac: { pClassMin: { war: 1 } },
+		})
+	).toEqual({
+		tank: {},
+		heal: {},
+		cac: { war: ['Abo'] },
+		dist: {},
+	})
+	expect(fillPClassMainRatio(players, defaultConstraints.role)).toEqual({
+		tank: {},
+		heal: {},
+		cac: { war: ['Abo', 'Arbok'], rogue: ['Pon'] },
+		dist: { hunt: ['Pikachu'], mage: ['Raichu'] },
 	})
 })
