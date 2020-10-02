@@ -27,6 +27,7 @@ const players = [
 		LastRB: '2020-08-01T15:00:00',
 		rank: 'raider',
 		pseudo: 'Pon',
+		rerollWanted: true,
 		characters: [
 			{ status: 'main', class: 'rogue', role: 'cac' },
 			{ status: 'mainReroll', class: 'drood', role: 'tank' },
@@ -42,6 +43,7 @@ const players = [
 		LastRB: '2020-09-15T15:00:00',
 		rank: 'raider',
 		pseudo: 'Pikachu',
+		rerollWanted: true,
 		characters: [
 			{ status: 'main', class: 'hunt', role: 'dist' },
 			{ status: 'reroll', class: 'paladin', role: 'cac' },
@@ -56,10 +58,38 @@ const players = [
 		LastRB: null,
 		rank: 'member',
 		pseudo: 'Raichu',
+		rerollWanted: true,
 		characters: [
 			{ status: 'main', class: 'mage', role: 'dist' },
 			{ status: 'reroll', class: 'war', role: 'tank' },
 		],
+	},
+	{
+		RaidReroll: 0,
+		LastRR: false,
+		MainBench: 0,
+		LastMB: null,
+		RerollBench: 0,
+		LastRB: null,
+		rank: 'raider',
+		pseudo: 'Abo',
+		rerollWanted: false,
+		characters: [
+			{ status: 'main', class: 'war', role: 'cac' },
+			{ status: 'reroll', class: 'war', role: 'tank' },
+		],
+	},
+	{
+		RaidReroll: 0,
+		LastRR: false,
+		MainBench: 0,
+		LastMB: null,
+		RerollBench: 0,
+		LastRB: null,
+		rank: 'raider',
+		pseudo: 'Abo',
+		rerollWanted: true,
+		characters: [{ status: 'main', class: 'war', role: 'cac' }],
 	},
 ]
 // DeepMerge
@@ -116,6 +146,8 @@ test('computeRerollWeight', () => {
 	expect(computeRerollWeight(players[0], raidDate)).toEqual(96)
 	expect(computeRerollWeight(players[1], raidDate)).toEqual(0)
 	expect(computeRerollWeight(players[2], raidDate)).toEqual(0)
+	expect(computeRerollWeight(players[3], raidDate)).toEqual(null)
+	expect(computeRerollWeight(players[4], raidDate)).toEqual(null)
 })
 
 // computeRerollBenchWeight

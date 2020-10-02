@@ -32,8 +32,13 @@ export const computeMainBenchWeigth = (
 }
 
 // Compute the Reroll priority. The lowest should be rerolling.
-export const computeRerollWeight = ({ RaidReroll, LastRR }, raidDate) => {
-	return computeBaseWeight(RaidReroll, LastRR, raidDate)
+export const computeRerollWeight = (
+	{ RaidReroll, LastRR, rerollWanted, characters },
+	raidDate
+) => {
+	return rerollWanted && characters.length > 1
+		? computeBaseWeight(RaidReroll, LastRR, raidDate)
+		: null
 }
 // Compute the priority for benching Reroll. The highest shouldn't be benched.
 export const computeRerollBenchWeight = ({ RerollBench, LastRB }, raidDate) => {
