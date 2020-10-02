@@ -4,6 +4,7 @@ import {
 	computeMainBenchWeigth,
 	computeRerollWeight,
 	computeRerollBenchWeight,
+	getBenchOrdered,
 } from './algo.js'
 
 const defaultConstraints = {
@@ -156,3 +157,50 @@ test('computeRerollBenchWeight', () => {
 	expect(computeRerollBenchWeight(players[1], raidDate)).toEqual(98)
 	expect(computeRerollBenchWeight(players[2], raidDate)).toEqual(0)
 })
+
+test('getBenchOrdered', () => {
+	expect(getBenchOrdered(players, raidDate, defaultConstraints)).toEqual(false)
+	expect(
+		getBenchOrdered(
+			[
+				{
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+				},
+				{
+					MainBench: 2,
+					LastMB: '2020-09-12T15:00:00',
+					rank: 'raider',
+				},
+				{
+					MainBench: 0,
+					LastMB: null,
+					rank: 'member',
+				},
+			],
+			raidDate,
+			{ maxPlayer: 1 }
+		)
+	).toEqual([
+		{
+			MainBench: 0,
+			LastMB: null,
+			rank: 'member',
+			mainBenchWeigth: 0,
+		},
+		{
+			MainBench: 0,
+			LastMB: null,
+			rank: 'raider',
+			mainBenchWeigth: 1000000,
+		},
+		{
+			MainBench: 2,
+			LastMB: '2020-09-12T15:00:00',
+			rank: 'raider',
+			mainBenchWeigth: 1000198,
+		},
+	])
+})
+

@@ -91,3 +91,16 @@ export const computeMainConstraint = (constraints) => {
 	}
 	return result
 }
+
+// Compute the bench weight of each players and return
+// an array sorted by ascending bench weight if bench
+// is needed or false.
+export const getBenchOrdered = (players, date, constraints) =>
+	players.length > constraints.maxPlayer &&
+	players
+		.map((player) => ({
+			...player,
+			mainBenchWeigth: computeMainBenchWeigth(player, date),
+		}))
+		.sort((a, b) => a.mainBenchWeigth - b.mainBenchWeigth) // ascending order
+
