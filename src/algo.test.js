@@ -5,6 +5,7 @@ import {
 	computeRerollWeight,
 	computeRerollBenchWeight,
 	getBenchOrdered,
+	getRerollOrdered,
 } from './algo.js'
 
 const defaultConstraints = {
@@ -200,6 +201,95 @@ test('getBenchOrdered', () => {
 			LastMB: '2020-09-12T15:00:00',
 			rank: 'raider',
 			mainBenchWeigth: 1000198,
+		},
+	])
+})
+
+test('getRerollOrdered', () => {
+	expect(
+		getRerollOrdered(
+			[
+				{
+					RaidReroll: 0,
+					LastRR: null,
+					rerollWanted: true,
+					characters: [],
+				},
+				{
+					RaidReroll: 0,
+					LastRR: null,
+					rerollWanted: true,
+					characters: [1, 2],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-09-12T15:00:00',
+					rerollWanted: true,
+					characters: [1, 2, 3],
+				},
+				{
+					RaidReroll: 3,
+					LastRR: '2020-09-12T15:00:00',
+					rerollWanted: false,
+					characters: [1, 2],
+				},
+				{
+					RaidReroll: 4,
+					LastRR: '2020-09-12T15:00:00',
+					rerollWanted: true,
+					characters: [1, 2],
+				},
+				{
+					RaidReroll: 4,
+					LastRR: '2020-09-01T15:00:00',
+					rerollWanted: true,
+					characters: [1, 2],
+				},
+			],
+			raidDate
+		)
+	).toEqual([
+		{
+			RaidReroll: 0,
+			LastRR: null,
+			rerollWanted: true,
+			characters: [1, 2],
+			rerollWeight: 0,
+		},
+		{
+			RaidReroll: 2,
+			LastRR: '2020-09-12T15:00:00',
+			rerollWanted: true,
+			characters: [1, 2, 3],
+			rerollWeight: 198,
+		},
+		{
+			RaidReroll: 4,
+			LastRR: '2020-09-01T15:00:00',
+			rerollWanted: true,
+			characters: [1, 2],
+			rerollWeight: 396,
+		},
+		{
+			RaidReroll: 4,
+			LastRR: '2020-09-12T15:00:00',
+			rerollWanted: true,
+			characters: [1, 2],
+			rerollWeight: 398,
+		},
+		{
+			RaidReroll: 0,
+			LastRR: null,
+			rerollWanted: true,
+			characters: [],
+			rerollWeight: null,
+		},
+		{
+			RaidReroll: 3,
+			LastRR: '2020-09-12T15:00:00',
+			rerollWanted: false,
+			characters: [1, 2],
+			rerollWeight: null,
 		},
 	])
 })
