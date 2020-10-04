@@ -8,7 +8,7 @@ import {
 	getRerollOrdered,
 	getMain,
 	fillPClassMainRatio,
-	analyseMissingPClass,
+	analyseMissingMin,
 	isEmpty,
 	isInClassQuotas,
 	getRoleOpenedMinQuota,
@@ -360,11 +360,60 @@ test('FillPClassMainRatio', () => {
 		cac: { war: ['Abo', 'Arbok'], rogue: ['Pon'] },
 		dist: { hunt: ['Pikachu'], mage: ['Raichu'] },
 	})
+	expect(
+		fillPClassMainRatio(players, testConstraints.role, {
+			tank: {},
+			heal: {},
+			cac: { war: ['Smogo'] },
+			dist: {},
+		})
+	).toEqual({
+		tank: {},
+		heal: {},
+		cac: { war: ['Smogo', 'Abo', 'Arbok'], rogue: ['Pon'] },
+		dist: { hunt: ['Pikachu'], mage: ['Raichu'] },
+	})
+	expect(
+		fillPClassMainRatio(
+			players,
+			{ cac: { pClassMin: { war: 2 } } },
+			{
+				tank: {},
+				heal: {},
+				cac: { war: ['Smogo'] },
+				dist: {},
+			}
+		)
+	).toEqual({
+		tank: {},
+		heal: {},
+		cac: { war: ['Smogo', 'Abo'] },
+		dist: {},
+	})
+	expect(
+		fillPClassMainRatio(players, { cac: { min: 2, pClassMin: { war: 1 } } })
+	).toEqual({
+		tank: {},
+		heal: {},
+		cac: { rogue: ['Pon'], war: ['Abo'] },
+		dist: {},
+	})
+	expect(
+		fillPClassMainRatio(players, {
+			cac: { min: 2, pClassMin: { war: 1 } },
+			dist: { min: 1 },
+		})
+	).toEqual({
+		tank: {},
+		heal: {},
+		cac: { rogue: ['Pon'], war: ['Abo'] },
+		dist: { hunt: ['Pikachu'] },
+	})
 })
 
-test('analyseMissingPClass', () => {
+test('analyseMissingMin', () => {
 	expect(
-		analyseMissingPClass(
+		analyseMissingMin(
 			{
 				tank: {},
 				heal: {},
@@ -375,7 +424,7 @@ test('analyseMissingPClass', () => {
 		)
 	).toEqual({ cac: { war: 1 } })
 	expect(
-		analyseMissingPClass(
+		analyseMissingMin(
 			{
 				tank: {},
 				heal: {},
@@ -396,7 +445,7 @@ test('analyseMissingPClass', () => {
 		dist: { mage: 2, hunt: 1 },
 	})
 	expect(
-		analyseMissingPClass(
+		analyseMissingMin(
 			{
 				tank: {},
 				heal: {},
@@ -417,7 +466,7 @@ test('analyseMissingPClass', () => {
 		dist: { mage: 2, hunt: 1 },
 	})
 	expect(
-		analyseMissingPClass(
+		analyseMissingMin(
 			{
 				tank: { war: [1, 2] },
 				heal: { paladin: [1, 2, 3] },
@@ -430,6 +479,39 @@ test('analyseMissingPClass', () => {
 				heal: { pClassMin: { paladin: 3 } },
 				dist: { pClassMin: { mage: 2, hunt: 1 } },
 			}
+		)
+	).toEqual({})
+	expect(
+		analyseMissingMin(
+			{
+				tank: {},
+				heal: {},
+				cac: { war: ['Abo'] },
+				dist: {},
+			},
+			{ cac: { min: 3, pClassMin: { war: 2 } } }
+		)
+	).toEqual({ cac: { war: 1, openSlot: 1 } })
+	expect(
+		analyseMissingMin(
+			{
+				tank: {},
+				heal: {},
+				cac: { war: ['Abo'], rogue: ['1'] },
+				dist: {},
+			},
+			{ cac: { min: 3, pClassMin: { war: 2 } } }
+		)
+	).toEqual({ cac: { war: 1 } })
+	expect(
+		analyseMissingMin(
+			{
+				tank: {},
+				heal: {},
+				cac: { war: [1, 2, 3] },
+				dist: {},
+			},
+			{ cac: { min: 3, pClassMin: { war: 2 } } }
 		)
 	).toEqual({})
 })
@@ -460,62 +542,94 @@ test('isInClassQuotas', () => {
 })
 
 test('getRoleOpenedMinQuota', () => {
-	expect(getRoleOpenedMinQuota('tank', testConstraints)).toEqual(0)
-	expect(getRoleOpenedMinQuota('heal', testConstraints)).toEqual(3)
-	expect(getRoleOpenedMinQuota('tank', testConstraints)).toEqual(0)
-	expect(getRoleOpenedMinQuota('tank', testConstraints)).toEqual(0)
+	expect(getRoleOpenedMinQuota(testConstraints.role.tank)).toEqual(0)
+	expect(getRoleOpenedMinQuota(testConstraints.role.heal)).toEqual(3)
 })
 
 test('getRoleOpenedAttributed', () => {
 	expect(
-		getRoleOpenedAttributed('tank', testConstraints, { tank: { war: [1, 2] } })
+		getRoleOpenedAttributed('tank', testConstraints.role.tank, {
+			tank: { war: [1, 2] },
+		})
 	).toEqual(0)
 	expect(
-		getRoleOpenedAttributed('tank', testConstraints, {
+		getRoleOpenedAttributed('tank', testConstraints.role.tank, {
 			tank: { war: [1, 2, 3, 4] },
 		})
 	).toEqual(1)
 	expect(
-		getRoleOpenedAttributed('tank', testConstraints, {
+		getRoleOpenedAttributed('tank', testConstraints.role.tank, {
 			tank: { drood: [1] },
 		})
 	).toEqual(1)
 	expect(
-		getRoleOpenedAttributed('tank', testConstraints, {
+		getRoleOpenedAttributed('tank', testConstraints.role.tank, {
 			tank: { drood: [1], war: [1, 2, 3, 4] },
 		})
 	).toEqual(2)
 	expect(
-		getRoleOpenedAttributed('tank', testConstraints, {
+		getRoleOpenedAttributed('tank', testConstraints.role.tank, {
 			tank: { war: [1, 2] },
 			heal: { drood: [1, 2, 3, 4] },
 		})
 	).toEqual(0)
-	expect(getRoleOpenedAttributed('tank', testConstraints, {})).toEqual(0)
+	expect(
+		getRoleOpenedAttributed('tank', testConstraints.role.tank, {})
+	).toEqual(0)
 })
 
 test('isInOpenMinQuota', () => {
-	expect(isInOpenMinQuota({ role: 'tank' }, testConstraints, {})).toEqual(false)
-	expect(isInOpenMinQuota({ role: 'heal' }, testConstraints, {})).toEqual(true)
+	expect(isInOpenMinQuota('tank', testConstraints.role.tank, {})).toEqual(false)
+	expect(isInOpenMinQuota('heal', testConstraints.role.heal, {})).toEqual(true)
 	expect(
-		isInOpenMinQuota({ role: 'heal' }, testConstraints, {
+		isInOpenMinQuota('heal', testConstraints.role.heal, {
 			heal: { paladin: [1, 2, 3], priest: [1, 2, 3], drood: [1] },
 		})
 	).toEqual(true)
 	expect(
-		isInOpenMinQuota({ role: 'heal' }, testConstraints, {
+		isInOpenMinQuota('heal', testConstraints.role.heal, {
 			heal: { paladin: [1], priest: [1, 2, 3], drood: [1] },
 		})
 	).toEqual(true)
 	expect(
-		isInOpenMinQuota({ role: 'heal' }, testConstraints, {
+		isInOpenMinQuota('heal', testConstraints.role.heal, {
 			heal: { paladin: [1], priest: [1, 2, 3], drood: [1, 2, 3, 4] },
 		})
 	).toEqual(false)
 	expect(
-		isInOpenMinQuota({ role: 'heal' }, testConstraints, {
+		isInOpenMinQuota('heal', testConstraints.role.heal, {
 			tank: { war: [1, 2, 3, 4], drood: [1, 2, 3, 4] },
 			heal: { paladin: [1], priest: [1, 2, 3], drood: [1, 2] },
 		})
 	).toEqual(true)
+	expect(
+		isInOpenMinQuota('cac', { min: 2, pClassMin: { war: 1 } }, {})
+	).toEqual(true)
+	expect(
+		isInOpenMinQuota(
+			'cac',
+			{ min: 2, pClassMin: { war: 1 } },
+			{
+				cac: { war: [1] },
+			}
+		)
+	).toEqual(true)
+	expect(
+		isInOpenMinQuota(
+			'cac',
+			{ min: 2, pClassMin: { war: 1 } },
+			{
+				cac: { war: [1, 2] },
+			}
+		)
+	).toEqual(false)
+	expect(
+		isInOpenMinQuota(
+			'cac',
+			{ min: 2, pClassMin: { war: 1 } },
+			{
+				cac: { rogue: [1] },
+			}
+		)
+	).toEqual(false)
 })

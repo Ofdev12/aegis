@@ -124,32 +124,48 @@ export const getRerollOrdered = (players, date) => {
 export const getMain = ({ characters }) =>
 	characters.filter(({ status }) => status === 'main')[0]
 
+const AddPlayerToSelection = (player, targetArray) => {
+	targetArray.push(player.pseudo)
+	player.IsSelected = true
+}
+
 // Find players' mainCharacter to fit the roles.
 // The flag IsSelected is set on selected players.
-export const fillPClassMainRatio = (players, roles) => {
-	const result = { tank: {}, heal: {}, cac: {}, dist: {} }
+export const fillPClassMainRatio = (players, roles, init) => {
+	const result = init || { tank: {}, heal: {}, cac: {}, dist: {} }
 	for (const player of players) {
 		const { pClass, role } = getMain(player)
 		// Get role and pClass min constraint
-		const pClassMin = roles[role] !== undefined && roles[role].pClassMin[pClass]
+		const pClassMin =
+			roles[role] !== undefined &&
+			roles[role].pClassMin !== undefined &&
+			roles[role].pClassMin[pClass]
 		if (pClassMin) {
 			// Add pClass to role object if needed.
 			if (!result[role][pClass]) result[role][pClass] = []
 			if (result[role][pClass].length < pClassMin) {
 				// Add player to result
-				result[role][pClass].push(player.pseudo)
-				player.IsSelected = true
+				AddPlayerToSelection(player, result[role][pClass])
+			} else if (isInOpenMinQuota(role, roles[role], result)) {
+				// Add player to result
+				AddPlayerToSelection(player, result[role][pClass])
 			}
+		} else if (roles[role] && isInOpenMinQuota(role, roles[role], result)) {
+			// Add pClass to role object if needed.
+			if (!result[role][pClass]) result[role][pClass] = []
+			// Add player to result
+			AddPlayerToSelection(player, result[role][pClass])
 		}
 	}
 	return result
 }
 
 // Compare the number of players in the result to the expected Pclass population.
-export const analyseMissingPClass = (res, roles) => {
+export const analyseMissingMin = (res, roles) => {
 	const missingPlayers = {}
-	for (const [role, { pClassMin }] of Object.entries(roles)) {
-		for (const [pClass, min] of Object.entries(pClassMin)) {
+	for (const [role, roleConstraints] of Object.entries(roles)) {
+		// Check for each class.
+		for (const [pClass, min] of Object.entries(roleConstraints.pClassMin)) {
 			const nbPClassPlayers = res[role][pClass] ? res[role][pClass].length : 0
 			if (nbPClassPlayers < min) {
 				if (!missingPlayers[role]) missingPlayers[role] = {}
@@ -157,6 +173,22 @@ export const analyseMissingPClass = (res, roles) => {
 					...missingPlayers[role],
 					[pClass]: Math.ceil(min - nbPClassPlayers),
 				}
+			}
+		}
+		// Check for the open slots.
+		if (roleConstraints.min) {
+			const minOpenSlot = getRoleOpenedMinQuota(roleConstraints)
+			if (minOpenSlot) {
+				const attributedOpenSlots = getRoleOpenedAttributed(
+					role,
+					roleConstraints,
+					res
+				)
+				if (minOpenSlot > attributedOpenSlots)
+					missingPlayers[role] = {
+						...missingPlayers[role],
+						openSlot: minOpenSlot - attributedOpenSlots,
+					}
 			}
 		}
 	}
@@ -170,30 +202,34 @@ export const isEmpty = (obj) => Object.keys(obj).length === 0
 export const isInClassQuotas = ({ role, pClass }, report) =>
 	Boolean(report[role] && report[role][pClass])
 
-// Gets the number of slot available for a specific role without specific class.
-export const getRoleOpenedMinQuota = (role, constraints) => {
-	const rc = constraints.role[role]
-	const fixedQuota = Object.values(rc.pClassMin).reduce(
-		(acc, val) => acc + val,
-		0
-	)
-	return rc.min - fixedQuota
+// Gets the number of slot available for a specific role without specific role.
+export const getRoleOpenedMinQuota = (roleConstraints) => {
+	if (!roleConstraints.min) return 0
+	const fixedQuota = roleConstraints.pClassMin
+		? Object.values(roleConstraints.pClassMin).reduce(
+				(acc, val) => acc + val,
+				0
+		  )
+		: 0
+	return roleConstraints.min - fixedQuota
 }
 
 // Get the number of players attributed to an open slot for a given role.
-export const getRoleOpenedAttributed = (role, constraints, attrib) => {
+export const getRoleOpenedAttributed = (role, roleConstraints, attrib) => {
 	if (!attrib[role]) return 0
-	const rc = constraints.role[role]
 	return Object.entries(attrib[role]).reduce((acc, [pClass, val]) => {
-		const pClassMin = rc.pClassMin[pClass] || 0
+		const pClassMin =
+			roleConstraints.pClassMin && roleConstraints.pClassMin[pClass]
+				? roleConstraints.pClassMin[pClass]
+				: 0
 		return acc + Math.max(0, val.length - pClassMin)
 	}, 0)
 }
 
 // Tests if the open min quota is fulfielled.
-export const isInOpenMinQuota = ({ role }, constraints, attrib) => {
-	const openedMin = getRoleOpenedMinQuota(role, constraints)
+export const isInOpenMinQuota = (role, roleConstraints, attrib) => {
+	const openedMin = getRoleOpenedMinQuota(roleConstraints)
 	if (!openedMin) return false
-	const openAttributed = getRoleOpenedAttributed(role, constraints, attrib)
+	const openAttributed = getRoleOpenedAttributed(role, roleConstraints, attrib)
 	return openAttributed < openedMin
 }
