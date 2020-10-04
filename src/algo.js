@@ -162,3 +162,38 @@ export const analyseMissingPClass = (res, roles) => {
 	}
 	return missingPlayers
 }
+
+// Tests if an object or an array is empty
+export const isEmpty = (obj) => Object.keys(obj).length === 0
+
+// Tests if the Class Quota is not fulfielled.
+export const isInClassQuotas = ({ role, pClass }, report) =>
+	Boolean(report[role] && report[role][pClass])
+
+// Gets the number of slot available for a specific role without specific class.
+export const getRoleOpenedMinQuota = (role, constraints) => {
+	const rc = constraints.role[role]
+	const fixedQuota = Object.values(rc.pClassMin).reduce(
+		(acc, val) => acc + val,
+		0
+	)
+	return rc.min - fixedQuota
+}
+
+// Get the number of players attributed to an open slot for a given role.
+export const getRoleOpenedAttributed = (role, constraints, attrib) => {
+	if (!attrib[role]) return 0
+	const rc = constraints.role[role]
+	return Object.entries(attrib[role]).reduce((acc, [pClass, val]) => {
+		const pClassMin = rc.pClassMin[pClass] || 0
+		return acc + Math.max(0, val.length - pClassMin)
+	}, 0)
+}
+
+// Tests if the open min quota is fulfielled.
+export const isInOpenMinQuota = ({ role }, constraints, attrib) => {
+	const openedMin = getRoleOpenedMinQuota(role, constraints)
+	if (!openedMin) return false
+	const openAttributed = getRoleOpenedAttributed(role, constraints, attrib)
+	return openAttributed < openedMin
+}
