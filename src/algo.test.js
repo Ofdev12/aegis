@@ -11,7 +11,7 @@ import {
 	analyseMissingPClass,
 } from './algo.js'
 
-const defaultConstraints = {
+const testConstraints = {
 	maxPlayer: 40,
 	mainRatio: 0.5,
 	role: {
@@ -99,9 +99,9 @@ const players = [
 ]
 // DeepMerge
 test('DeepMerge', () => {
-	expect(deepMerge(defaultConstraints)).toEqual(defaultConstraints)
+	expect(deepMerge(testConstraints)).toEqual(testConstraints)
 	expect(
-		deepMerge(defaultConstraints, {
+		deepMerge(testConstraints, {
 			maxPlayer: 2,
 			pon: 'ponpon',
 			role: { dist: { min: 2 } },
@@ -131,7 +131,7 @@ test('DeepMerge', () => {
 
 // Compute Main Constraint
 test('ComputeMainConstraint', () => {
-	expect(computeMainConstraint(defaultConstraints)).toEqual({
+	expect(computeMainConstraint(testConstraints)).toEqual({
 		tank: { min: 1.5, max: 5, pClassMin: { war: 1.5 } },
 		heal: {
 			min: 5,
@@ -167,7 +167,7 @@ test('computeRerollBenchWeight', () => {
 })
 
 test('getBenchOrdered', () => {
-	expect(getBenchOrdered(players, raidDate, defaultConstraints)).toEqual(false)
+	expect(getBenchOrdered(players, raidDate, testConstraints)).toEqual(false)
 	expect(
 		getBenchOrdered(
 			[
@@ -349,7 +349,7 @@ test('FillPClassMainRatio', () => {
 		cac: { war: ['Abo'] },
 		dist: {},
 	})
-	expect(fillPClassMainRatio(players, defaultConstraints.role)).toEqual({
+	expect(fillPClassMainRatio(players, testConstraints.role)).toEqual({
 		tank: {},
 		heal: {},
 		cac: { war: ['Abo', 'Arbok'], rogue: ['Pon'] },
