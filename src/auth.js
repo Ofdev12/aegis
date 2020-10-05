@@ -1,5 +1,4 @@
 import Cookies from 'js-cookie'
-
 import { navigate } from '@reach/router'
 import { getTokkenDiscord, getInfosUserDiscord } from './discobot/index'
 
