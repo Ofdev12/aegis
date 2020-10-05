@@ -10,7 +10,6 @@ import './Home.css'
 
 export const Home = (props) => {
 	const [status, setStatus] = useState()
-	const [isConnected, setIsConnected] = useState(false)
 	const [userInfos, setUserInfos] = useState({})
 
 	useEffect(() => {
@@ -18,10 +17,10 @@ export const Home = (props) => {
 		const cookieParsed = cookies ? JSON.parse(cookies) : false
 		if (cookieParsed && cookieParsed.access_token && cookieParsed.token_type) {
 			setStatus('loading')
-			connectFromCookie(cookieParsed, setIsConnected, setUserInfos)
+			connectFromCookie(cookieParsed, setUserInfos)
 		} else if (window.location.search) {
 			setStatus('loading')
-			connectFromCode(setUserInfos, setIsConnected, setStatus)
+			connectFromCode(setUserInfos, setStatus)
 		}
 	}, [])
 

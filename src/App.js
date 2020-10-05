@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import './App.css'
 
 import { Router } from '@reach/router'
@@ -9,7 +9,6 @@ import { AdminUser } from './components/AdminUser'
 import { Raid } from './components/Raid'
 
 const App = () => {
-	const [userInfos, setUserInfos] = useState({})
 	return (
 		<div className='App'>
 			<Router>
