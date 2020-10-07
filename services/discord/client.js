@@ -28,17 +28,23 @@ client.on('message', (msg) => {
 	}
 })
 
-// const manageReactions = async (messageID) => {
-// 	const msg = await guildChannel.messages.fetch(messageID)
-// 	const reactions = [...msg.reactions.cache]
-// 	const formatClassReactions = reactions.map(async (reaction, i) => {
-// 		const users = await reaction[1].users.fetch()
-// 		const usersNames = [...users]
-// 			.filter((user) => user[1].bot === false)
-// 			.map((user) => ({ username: user[1].username, id: user[1].id }))
-// 		return { [reaction[1]._emoji.name]: usersNames }
-// 	})
-// 	return Promise.all(formatClassReactions)
-// }
-// const a = manageReactions('761313497631817738')
-// a.then(console.log).catch(console.error)
+const manageReactions = async (props) => {
+	const { id, day } = props
+	const days = { Wednesday: '639125966521892879', Sunday: '709374805647949856' }
+
+	const guildChannel = new Discord.TextChannel(guild, {
+		id: days[day],
+	})
+	const msg = await guildChannel.messages.fetch(id)
+	const reactions = [...msg.reactions.cache]
+	const formatClassReactions = reactions.map(async (reaction, i) => {
+		const users = await reaction[1].users.fetch()
+		const usersNames = [...users]
+			.filter((user) => user[1].bot === false)
+			.map((user) => ({ username: user[1].username, id: user[1].id }))
+		return { [reaction[1]._emoji.name]: usersNames }
+	})
+	return Promise.all(formatClassReactions)
+}
+
+module.exports = manageReactions

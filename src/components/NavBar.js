@@ -10,7 +10,7 @@ import { redirectToDiscord } from '../discobot/index'
 const { SubMenu } = Menu
 
 export const NavBar = ({ userInfos }) => {
-	const [current, setCurrent] = useState('mail')
+	const [current, setCurrent] = useState('accueil')
 
 	const handleClick = (e) => {
 		// console.log('click ', e)
@@ -24,10 +24,10 @@ export const NavBar = ({ userInfos }) => {
 			selectedKeys={[current]}
 			mode='horizontal'
 		>
-			<Menu.Item key='mail' icon={<MailOutlined />}>
+			<Menu.Item key='accueil' icon={<MailOutlined />}>
 				Accueil
 			</Menu.Item>
-			<Menu.Item key='app' icon={<AppstoreOutlined />}>
+			<Menu.Item key='articles' icon={<AppstoreOutlined />}>
 				Articles
 			</Menu.Item>
 			<SubMenu key='SubMenu' icon={<SettingOutlined />} title='Raid'>
