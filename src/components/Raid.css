@@ -1,0 +1,45 @@
+h1 {
+	margin-bottom: 40px;
+}
+
+.meta {
+	display: flex;
+	flex-direction: row;
+	margin-bottom: 48px;
+}
+/* 
+.raid-container {
+	border: 1px solid black;
+} */
+
+.raid {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 48px;
+}
+
+.raid > div {
+	/* border: 1px solid red; */
+	width: 40%;
+	margin-left: 16px;
+	margin-right: 16px;
+	margin-bottom: 24px;
+}
+
+.meta-random {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	padding: 16px 16px;
+}
+
+.meta-random > div {
+	display: flex;
+	justify-content: space-between;
+	/* border: 1px solid green; */
+	flex-direction: row;
+}
+
+#classes > div {
+	width: 100%;
+}
