@@ -9,7 +9,7 @@ const defaultConstraints = {
 		tank: { min: 3, max: 5, pClassMin: { war: 3 } },
 		heal: { min: 10, max: 12, pClassMin: { paladin: 3, priest: 3, drood: 1 } },
 		cac: { min: 8, max: 15, pClassMin: { war: 5, rogue: 3 } },
-		dist: { min: 8, max: 15, pClassMin: { hunt: 2, mage: 4, demo: 2 } },
+		dist: { min: 8, max: 15, pClassMin: { hunt: 2, mage: 4, warlock: 2 } },
 	},
 }
 
@@ -124,13 +124,8 @@ export const getRerollOrdered = (players, date) => {
 export const getMain = ({ characters }) =>
 	characters.filter(({ status }) => status === 'main')[0]
 
-const AddPlayerToSelection = (player, targetArray) => {
-	targetArray.push(player.pseudo)
-	player.IsSelected = true
-}
-
 // Find players' mainCharacter to fit the roles.
-// The flag IsSelected is set on selected players.
+// The flag isSelected is set on selected players.
 export const fillPClassMainRatio = (players, roles, init) => {
 	const result = init || { tank: {}, heal: {}, cac: {}, dist: {} }
 	for (const player of players) {
@@ -140,21 +135,24 @@ export const fillPClassMainRatio = (players, roles, init) => {
 			roles[role] !== undefined &&
 			roles[role].pClassMin !== undefined &&
 			roles[role].pClassMin[pClass]
+		// If the class is in quotas
 		if (pClassMin) {
-			// Add pClass to role object if needed.
 			if (!result[role][pClass]) result[role][pClass] = []
+			//If the quota isn't fulfielled
 			if (result[role][pClass].length < pClassMin) {
-				// Add player to result
-				AddPlayerToSelection(player, result[role][pClass])
+				addToAttrib(player, result, role, pClass)
+				player.isSelected = true
+				// If the pClass quota is fulfielled but not the openSlot one.
 			} else if (isInOpenMinQuota(role, roles[role], result)) {
-				// Add player to result
-				AddPlayerToSelection(player, result[role][pClass])
+				addToAttrib(player, result, role, pClass)
+				player.isSelected = true
+				player.IsOpenSlot = true
 			}
+			//If the class isn't in quota and the openSlot quota isn't fulfielled.
 		} else if (roles[role] && isInOpenMinQuota(role, roles[role], result)) {
-			// Add pClass to role object if needed.
-			if (!result[role][pClass]) result[role][pClass] = []
-			// Add player to result
-			AddPlayerToSelection(player, result[role][pClass])
+			addToAttrib(player, result, role, pClass)
+			player.isSelected = true
+			player.IsOpenSlot = true
 		}
 	}
 	return result
@@ -196,7 +194,8 @@ export const analyseMissingMin = (res, roles) => {
 }
 
 // Tests if an object or an array is empty
-export const isEmpty = (obj) => Object.keys(obj).length === 0
+export const isEmpty = (obj) =>
+	obj === null || obj === undefined ? true : Object.keys(obj).length === 0
 
 // Tests if the Class Quota is not fulfielled.
 export const isInClassQuotas = ({ role, pClass }, report) =>
@@ -232,4 +231,399 @@ export const isInOpenMinQuota = (role, roleConstraints, attrib) => {
 	if (!openedMin) return false
 	const openAttributed = getRoleOpenedAttributed(role, roleConstraints, attrib)
 	return openAttributed < openedMin
+}
+
+// Get the number of OpenSlots.
+export const getMaxOpenSlots = (roleConstraints) => {
+	if (!roleConstraints.max) return 0
+	const fixedQuota = roleConstraints.pClassMin
+		? Object.values(roleConstraints.pClassMin).reduce(
+				(acc, val) => acc + val,
+				0
+		  )
+		: 0
+	return roleConstraints.max - fixedQuota
+}
+
+// Get the number of attributed OpenSlots.
+export const getNbAttributedSlots = (attrib) =>
+	Object.values(attrib).reduce(
+		(acc, role) =>
+			acc + Object.values(role).reduce((acc2, val) => acc2 + val.length, 0),
+		0
+	)
+
+// Check if the character can be added. Returns 'pClassMin' if it fits the MinQuotas,
+// 'openSlot' if it fits the Open Quotas, or false.
+export const isRespectingMax = ({ pClass, role }, constraints, attrib) => {
+	const ndAttributedSlots = getNbAttributedSlots(attrib)
+	if (ndAttributedSlots >= constraints.maxPlayer) return false
+	// Check if the character fits the minQuotas
+	const roleConstraints = constraints.role[role]
+	const pClassMin = roleConstraints.pClassMin[pClass]
+	if (pClassMin) {
+		const pClassAttrib = attrib[role] && attrib[role][pClass]
+		if (!pClassAttrib) return 'pClassMin'
+		if (pClassAttrib.length < pClassMin) return 'pClassMin'
+	}
+	// Check if the character fits the openSlots
+	const openSlotsAttributed = getRoleOpenedAttributed(
+		role,
+		roleConstraints,
+		attrib
+	)
+	const maxOpenSlot = getMaxOpenSlots(roleConstraints)
+	return openSlotsAttributed < maxOpenSlot ? 'openSlot' : false
+}
+
+export const deepCopy = (target) => {
+	if (target === null) return null
+	if (Array.isArray(target)) {
+		return target.map(deepCopy)
+	}
+	if (typeof target === 'object') {
+		const res = {}
+		for (const [key, value] of Object.entries(target)) {
+			res[key] = deepCopy(value)
+		}
+		return res
+	}
+	return target
+}
+
+export const findPlayerAttrib = (pseudo, attrib) => {
+	if (!pseudo || !attrib) return
+	for (const [role, val] of Object.entries(attrib)) {
+		for (const [pClass, pseudos] of Object.entries(val)) {
+			if (pseudos.find((p) => p === pseudo)) return { role, pClass }
+		}
+	}
+}
+
+export const findCharacter = (r, pC, characters) =>
+	pC === 'openSlot'
+		? characters.find(({ role }) => role === r)
+		: characters.find(({ role, pClass }) => role === r && pClass === pC)
+
+const getAttributed = (players) =>
+	players.filter(({ isSelected }) => isSelected)
+const getNonAttributed = (players) =>
+	players.filter((player) => !player.isSelected)
+
+const getMainReroll = (characters) =>
+	characters.filter(({ status }) => status === 'mainReroll')
+const getAllRerolls = (characters) =>
+	characters.filter(({ status }) => status !== 'main')
+
+const fitDescription = (char, role, pClass) =>
+	role === char.role &&
+	(pClass === 'openSlot' ? char.IsOpenSlot : char.role === missingRole)
+
+const getPlayerRerolls = (player, onlyMainReroll) =>
+	onlyMainReroll
+		? getMainReroll(player.characters)
+		: getAllRerolls(player.characters)
+
+const removeFromAttrib = (player, attrib, role, pClass) =>
+	(attrib[role][pClass] = attrib[role][pClass].filter(
+		(p) => p !== player.pseudo
+	))
+
+const addToAttrib = (player, attrib, role, pClass) => {
+	if (!attrib[role][pClass]) attrib[role][pClass] = []
+	attrib[role][pClass].push(player.pseudo)
+}
+
+// Try to find a reroll of the player to replace the selected reroller
+const findAnotherReroll = (player, context) => {
+	let {
+		missingRole,
+		missingPClass,
+		missingCharacters,
+		onlyMainReroll,
+		rerollerRole,
+		rerollerPClass,
+		rerollAttrib,
+		reroller,
+		goodReroll,
+	} = context
+
+	// Find a reroll to replace the current reroller.
+	const replacementReroll = findCharacter(
+		rerollerRole,
+		rerollerPClass,
+		getPlayerRerolls(player, onlyMainReroll)
+	)
+	if (!replacementReroll) return
+
+	// Add the new player to selection
+	addToAttrib(player, rerollAttrib, rerollerRole, replacementReroll.pClass)
+	player.isSelected = true
+	player.IsReroll = true
+	player.IsOpenSlot = missingPClass === 'openSlot'
+
+	// Update context
+	missingCharacters[missingRole][missingPClass]--
+	return true
+}
+
+// Try to find another reroll of the reroller to match another quota
+// And replace the current by a reroll of another player.
+const findGoodReroll = (rerolls, context) => {
+	let {
+		potentialRerolls,
+		missingRole,
+		missingPClass,
+		rerollerRole,
+		rerollerPClass,
+		rerollAttrib,
+		reroller,
+	} = context
+	// Look for another reroll to fulfiel another quota.
+	if (rerolls.length === 1) return
+	const goodReroll = findCharacter(
+		missingRole,
+		missingPClass,
+		rerolls.filter(
+			({ role, pClass }) =>
+				!(role === rerollerRole && pClass === rerollerPClass)
+		)
+	)
+	if (!goodReroll) return // No other match.
+
+	// Try to find a reroll of another player to replace the selected one
+	const availableReroller = getNonAttributed(potentialRerolls)
+	for (let i = availableReroller.length - 1; i >= 0; i--) {
+		const success = findAnotherReroll(availableReroller[i], context)
+		if (success) {
+			// Update reroller attribution (replace previous attrib with goodReroll)
+			rerollAttrib[rerollerRole][rerollerPClass] = removeFromAttrib(
+				reroller,
+				rerollAttrib,
+				rerollerRole,
+				rerollerPClass
+			)
+			addToAttrib(reroller, rerollAttrib, goodReroll.role, goodReroll.pClass)
+			return true
+		}
+	}
+}
+
+// Try to change current rerollers attributions to add more rerolls.
+const changeRerolls = (context) => {
+	let { potentialRerolls, missingPClass, nbMissing, rerollAttrib } = context
+	if (!nbMissing) return
+	const selectedRerollers = getAttributed(potentialRerolls)
+	// For each current rerolling players:
+	for (const reroller of selectedRerollers) {
+		const { role: rerollerRole, pClass: rerollerPClass } = findPlayerAttrib(
+			reroller.pseudo,
+			rerollAttrib
+		)
+		// Check if the reroll is already part of the unfulfielled quota
+		const alreadyInQuota = fitDescription(reroller, rerollerRole, missingPClass)
+		if (!alreadyInQuota) {
+			// if not, try to change his attribution
+			const rerolls = getPlayerRerolls(reroller)
+			context = {
+				...context,
+				reroller,
+				rerollerRole,
+				rerollerPClass,
+			}
+			const success = findGoodReroll(rerolls, context)
+			if (success) return true
+		}
+	}
+}
+
+export const fillMissingMainWithRerolls = (...props) => {
+	const [potentialRerolls, reportMainAttrib, nbReroll, onlyMainReroll] = props
+	if (isEmpty(reportMainAttrib)) return false
+	let nbRerollSelected = 0
+	let missingRoleTotal = 0
+	let rerollAttrib = { tank: {}, heal: {}, cac: {}, dist: {} }
+	let missingCharacters = deepCopy(reportMainAttrib)
+	// Looking for reroll as long as needed (but not more than the limit)
+
+	// Try to find a reroll for each entrance of the report.
+	for (const [missingRole, val] of Object.entries(reportMainAttrib)) {
+		for (const [missingPClass, nbMissing] of Object.entries(val)) {
+			missingRoleTotal += nbMissing
+			let attributedReroll = 0
+			let rerollFound = true
+			// Try to find the good number of reroll.
+			while (
+				rerollFound &&
+				attributedReroll < nbMissing &&
+				nbRerollSelected < nbReroll
+			) {
+				rerollFound = false
+				const usableRerolls = getNonAttributed(potentialRerolls)
+				for (
+					let rerollIndex = usableRerolls.length - 1;
+					rerollIndex >= 0;
+					rerollIndex--
+				) {
+					const candidate = usableRerolls[rerollIndex]
+					const { characters } = candidate
+					const rerolls = onlyMainReroll
+						? getMainReroll(characters)
+						: getAllRerolls(characters)
+					const goodReroll = findCharacter(missingRole, missingPClass, rerolls)
+					if (goodReroll) {
+						addToAttrib(candidate, rerollAttrib, missingRole, goodReroll.pClass)
+						candidate.isSelected = true
+						candidate.IsReroll = true
+						candidate.IsOpenSlot = missingPClass === 'openSlot'
+						attributedReroll++
+						nbRerollSelected++
+						rerollFound = true
+						missingCharacters[missingRole][missingPClass]--
+						break
+					}
+				}
+			}
+		}
+	}
+	// Check if the quota are respected
+	if (
+		nbRerollSelected &&
+		nbRerollSelected < nbReroll &&
+		missingRoleTotal > nbRerollSelected
+	) {
+		// Try to change attributted rerolls
+		let hasChanged = false
+		do {
+			hasChanged = false
+			for (const [missingRole, val] of Object.entries(missingCharacters)) {
+				for (const [missingPClass, nbMissing] of Object.entries(val)) {
+					let context = {
+						potentialRerolls,
+						missingPClass,
+						missingRole,
+						nbMissing,
+						nbRerollSelected,
+						onlyMainReroll,
+						rerollAttrib,
+						missingCharacters,
+					}
+					hasChanged = changeRerolls(context)
+					if (hasChanged) {
+						nbRerollSelected++
+						break
+					}
+				}
+				if (hasChanged) {
+					break
+				}
+			}
+		} while (
+			hasChanged &&
+			nbRerollSelected < nbReroll &&
+			nbRerollSelected < missingRoleTotal
+		)
+	}
+	return { rerollAttrib, nbRerollSelected }
+}
+
+// Return the reroll Attribution that fulfiels the constraints
+export const fillRerolls = (
+	potentialRerolls,
+	constraints,
+	nbReroll,
+	attrib,
+	reportMainAttrib
+) => {
+	// Check if the main quotas are completed
+	let { nbRerollSelected, rerollAttrib } = fillMissingMainWithRerolls(
+		potentialRerolls,
+		reportMainAttrib,
+		nbReroll,
+		constraints.onlyMainReroll
+	) || {
+		nbRerollSelected: 0,
+		rerollAttrib: { tank: {}, heal: {}, cac: {}, dist: {} },
+	}
+	const availableRerollers = getNonAttributed(potentialRerolls)
+	let rerollIndex = availableRerollers.length - 1
+
+	// Try to add new rerolls (respecting the reroll limitation)
+	while (nbRerollSelected < nbReroll && rerollIndex >= 0) {
+		const player = availableRerollers[rerollIndex]
+		// Chose eligible rerolls
+		const rerolls = getPlayerRerolls(player, constraints.onlyMainReroll)
+
+		const currentAttrib = deepMerge(attrib, rerollAttrib)
+		// Find a character which respects Max quotas
+		for (const reroll of rerolls) {
+			const maxRespected = isRespectingMax(reroll, constraints, currentAttrib)
+			if (maxRespected) {
+				const { role, pClass } = reroll
+				addToAttrib(player, rerollAttrib, role, pClass)
+				nbRerollSelected++
+				player.isSelected = true
+				player.rerollSelected = true
+				break
+			}
+		}
+		rerollIndex--
+	}
+
+	// Check if the max number of reroll is reached
+	if (nbRerollSelected === nbReroll) return rerollAttrib
+
+	// Define the missing roles
+	const missingMax = {}
+	let missingRoleTotal = 0
+	for (const [role, { max }] of Object.entries(constraints.role)) {
+		const nbPlayer = Object.values(attrib[role]).reduce(
+			(acc, entry) => acc + entry.length,
+			0
+		)
+		const missingPlayers = max - nbPlayer
+		if (missingPlayers) missingMax[role] = { openSlot: max - nbPlayer }
+		missingRoleTotal += missingPlayers
+	}
+	// Try to change reroll attributions to reach the quota
+
+	if (
+		nbRerollSelected &&
+		nbRerollSelected < nbReroll &&
+		nbRerollSelected < missingRoleTotal
+	) {
+		// Try to change attributted rerolls
+		let hasChanged = false
+		do {
+			hasChanged = false
+			for (const [missingRole, val] of Object.entries(missingMax)) {
+				for (const [missingPClass, nbMissing] of Object.entries(val)) {
+					let context = {
+						potentialRerolls,
+						missingPClass,
+						missingRole,
+						nbMissing,
+						nbRerollSelected,
+						onlyMainReroll: constraints.onlyMainReroll,
+						rerollAttrib,
+						missingCharacters: missingMax,
+					}
+					hasChanged = changeRerolls(context)
+					if (hasChanged) {
+						nbRerollSelected++
+						break
+					}
+				}
+				if (hasChanged) {
+					break
+				}
+			}
+		} while (
+			hasChanged &&
+			nbRerollSelected < nbReroll &&
+			nbRerollSelected < missingRoleTotal
+		)
+	}
+
+	return rerollAttrib
 }

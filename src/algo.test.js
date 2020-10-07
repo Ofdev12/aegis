@@ -14,6 +14,14 @@ import {
 	getRoleOpenedMinQuota,
 	getRoleOpenedAttributed,
 	isInOpenMinQuota,
+	getMaxOpenSlots,
+	getNbAttributedSlots,
+	isRespectingMax,
+	deepCopy,
+	findPlayerAttrib,
+	findCharacter,
+	fillMissingMainWithRerolls,
+	fillRerolls,
 } from './algo.js'
 
 const testConstraints = {
@@ -23,7 +31,7 @@ const testConstraints = {
 		tank: { min: 3, max: 5, pClassMin: { war: 3 } },
 		heal: { min: 10, max: 12, pClassMin: { paladin: 3, priest: 3, drood: 1 } },
 		cac: { min: 8, max: 15, pClassMin: { war: 5, rogue: 3 } },
-		dist: { min: 8, max: 15, pClassMin: { hunt: 2, mage: 4, demo: 2 } },
+		dist: { min: 8, max: 15, pClassMin: { hunt: 2, mage: 4, warlock: 2 } },
 	},
 }
 const raidDate = '2020-09-30T00:00:00'
@@ -105,6 +113,7 @@ const players = [
 // DeepMerge
 test('DeepMerge', () => {
 	expect(deepMerge(testConstraints)).toEqual(testConstraints)
+	expect(deepMerge({ a: 1, b: null })).toEqual({ a: 1, b: null })
 	expect(
 		deepMerge(testConstraints, {
 			maxPlayer: 2,
@@ -123,7 +132,7 @@ test('DeepMerge', () => {
 				pClassMin: { paladin: 3, priest: 3, drood: 1 },
 			},
 			cac: { min: 8, max: 15, pClassMin: { war: 5, rogue: 3 } },
-			dist: { min: 2, max: 15, pClassMin: { hunt: 2, mage: 4, demo: 2 } },
+			dist: { min: 2, max: 15, pClassMin: { hunt: 2, mage: 4, warlock: 2 } },
 		},
 	})
 	expect(deepMerge([1, 2, ['a', 'b']], [1, undefined, ['c'], 3])).toEqual([
@@ -132,6 +141,13 @@ test('DeepMerge', () => {
 		['c', 'b'],
 		3,
 	])
+})
+
+test('deepCopy', () => {
+	expect(deepCopy(1)).toEqual(1)
+	expect(deepCopy('a')).toEqual('a')
+	expect(deepCopy([1, 2])).toEqual([1, 2])
+	expect(deepCopy({ a: 1, b: 2 })).toEqual({ a: 1, b: 2 })
 })
 
 // Compute Main Constraint
@@ -144,7 +160,7 @@ test('ComputeMainConstraint', () => {
 			pClassMin: { paladin: 1.5, priest: 1.5, drood: 0.5 },
 		},
 		cac: { min: 4, max: 15, pClassMin: { war: 2.5, rogue: 1.5 } },
-		dist: { min: 4, max: 15, pClassMin: { hunt: 1, mage: 2, demo: 1 } },
+		dist: { min: 4, max: 15, pClassMin: { hunt: 1, mage: 2, warlock: 1 } },
 	})
 })
 
@@ -172,7 +188,9 @@ test('computeRerollBenchWeight', () => {
 })
 
 test('getBenchOrdered', () => {
-	expect(getBenchOrdered(players, raidDate, testConstraints)).toEqual(false)
+	expect(getBenchOrdered(deepCopy(players), raidDate, testConstraints)).toEqual(
+		false
+	)
 	expect(
 		getBenchOrdered(
 			[
@@ -336,7 +354,7 @@ test('GetMain', () => {
 
 test('FillPClassMainRatio', () => {
 	expect(
-		fillPClassMainRatio(players, { cac: { pClassMin: { war: 1 } } })
+		fillPClassMainRatio(deepCopy(players), { cac: { pClassMin: { war: 1 } } })
 	).toEqual({
 		tank: {},
 		heal: {},
@@ -344,7 +362,7 @@ test('FillPClassMainRatio', () => {
 		dist: {},
 	})
 	expect(
-		fillPClassMainRatio(players, {
+		fillPClassMainRatio(deepCopy(players), {
 			tank: { pClassMin: { drood: 1 } },
 			cac: { pClassMin: { war: 1 } },
 		})
@@ -354,14 +372,14 @@ test('FillPClassMainRatio', () => {
 		cac: { war: ['Abo'] },
 		dist: {},
 	})
-	expect(fillPClassMainRatio(players, testConstraints.role)).toEqual({
+	expect(fillPClassMainRatio(deepCopy(players), testConstraints.role)).toEqual({
 		tank: {},
 		heal: {},
 		cac: { war: ['Abo', 'Arbok'], rogue: ['Pon'] },
 		dist: { hunt: ['Pikachu'], mage: ['Raichu'] },
 	})
 	expect(
-		fillPClassMainRatio(players, testConstraints.role, {
+		fillPClassMainRatio(deepCopy(players), testConstraints.role, {
 			tank: {},
 			heal: {},
 			cac: { war: ['Smogo'] },
@@ -375,7 +393,7 @@ test('FillPClassMainRatio', () => {
 	})
 	expect(
 		fillPClassMainRatio(
-			players,
+			deepCopy(players),
 			{ cac: { pClassMin: { war: 2 } } },
 			{
 				tank: {},
@@ -391,7 +409,9 @@ test('FillPClassMainRatio', () => {
 		dist: {},
 	})
 	expect(
-		fillPClassMainRatio(players, { cac: { min: 2, pClassMin: { war: 1 } } })
+		fillPClassMainRatio(deepCopy(players), {
+			cac: { min: 2, pClassMin: { war: 1 } },
+		})
 	).toEqual({
 		tank: {},
 		heal: {},
@@ -399,7 +419,7 @@ test('FillPClassMainRatio', () => {
 		dist: {},
 	})
 	expect(
-		fillPClassMainRatio(players, {
+		fillPClassMainRatio(deepCopy(players), {
 			cac: { min: 2, pClassMin: { war: 1 } },
 			dist: { min: 1 },
 		})
@@ -632,4 +652,886 @@ test('isInOpenMinQuota', () => {
 			}
 		)
 	).toEqual(false)
+})
+
+test('getMaxOpenSlots', () => {
+	expect(getMaxOpenSlots(testConstraints.role.heal)).toEqual(5)
+	expect(getMaxOpenSlots(testConstraints.role.tank)).toEqual(2)
+	expect(getMaxOpenSlots(testConstraints.role.cac)).toEqual(7)
+	expect(getMaxOpenSlots(testConstraints.role.dist)).toEqual(7)
+})
+
+test('getNbAttributedSlots', () => {
+	expect(getNbAttributedSlots({})).toEqual(0)
+	expect(getNbAttributedSlots({ tank: { war: [1, 2] } })).toEqual(2)
+	expect(getNbAttributedSlots({ tank: { war: [1, 2], rogue: [1] } })).toEqual(3)
+	expect(
+		getNbAttributedSlots({
+			tank: { war: [1, 2], rogue: [1] },
+			heal: { drood: [1] },
+		})
+	).toEqual(4)
+	expect(
+		getNbAttributedSlots({
+			tank: { war: [1, 2], rogue: [1] },
+			heal: { drood: [1], paladin: [1] },
+			dist: { mage: [1, 2, 3] },
+		})
+	).toEqual(8)
+})
+
+test('isRespectingMax', () => {
+	expect(
+		isRespectingMax({ role: 'tank', pClass: 'war' }, testConstraints, {})
+	).toEqual('pClassMin')
+	expect(
+		isRespectingMax({ role: 'tank', pClass: 'drood' }, testConstraints, {})
+	).toEqual('openSlot')
+	expect(
+		isRespectingMax(
+			{ role: 'tank', pClass: 'drood' },
+			{
+				maxPlayer: 5,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: {
+						min: 1,
+						max: 2,
+						pClassMin: { paladin: 1 },
+
+						cac: { min: 1, max: 2, pClassMin: { hunt: 1 } },
+					},
+				},
+			},
+			{}
+		)
+	).toEqual('openSlot')
+	expect(
+		isRespectingMax(
+			{ role: 'tank', pClass: 'war' },
+			{
+				maxPlayer: 5,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: {
+						min: 1,
+						max: 2,
+						pClassMin: { paladin: 1 },
+
+						cac: { min: 1, max: 2, pClassMin: { hunt: 1 } },
+					},
+				},
+			},
+			{ tank: { drood: [1] }, heal: {}, dist: { hunt: [1] } }
+		)
+	).toEqual('pClassMin')
+	expect(
+		isRespectingMax(
+			{ role: 'tank', pClass: 'drood' },
+			{
+				maxPlayer: 5,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: {
+						min: 1,
+						max: 2,
+						pClassMin: { paladin: 1 },
+
+						cac: { min: 1, max: 2, pClassMin: { hunt: 1 } },
+					},
+				},
+			},
+			{ tank: { drood: [1] }, heal: {}, dist: { hunt: [1] } }
+		)
+	).toEqual(false)
+	expect(
+		isRespectingMax(
+			{ role: 'tank', pClass: 'drood' },
+			{
+				maxPlayer: 5,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: {
+						min: 1,
+						max: 2,
+						pClassMin: { paladin: 1 },
+
+						cac: { min: 1, max: 2, pClassMin: { hunt: 1 } },
+					},
+				},
+			},
+			{
+				tank: { war: [1] },
+				heal: { paladin: [1, 2] },
+				dist: { hunt: [1], mage: [1] },
+			}
+		)
+	).toEqual(false)
+})
+
+test('findPlayerAttrib', () => {
+	expect(findPlayerAttrib()).toEqual(undefined)
+	expect(
+		findPlayerAttrib('pon', {
+			tank: { war: ['pon'] },
+			heal: {},
+			cac: {},
+			dist: {},
+		})
+	).toEqual({ role: 'tank', pClass: 'war' })
+
+	expect(
+		findPlayerAttrib('Pikachu', {
+			tank: { war: ['pon'] },
+			heal: {},
+			cac: { rogue: ['Pikachu'] },
+			dist: {},
+		})
+	).toEqual({ role: 'cac', pClass: 'rogue' })
+	expect(
+		findPlayerAttrib('Raichu', {
+			tank: { war: ['pon'] },
+			heal: {},
+			cac: { rogue: ['Pikachu'] },
+			dist: {},
+		})
+	).toEqual(undefined)
+})
+
+test('findCharacter', () => {
+	expect(
+		findCharacter('tank', 'war', [
+			{ status: 'main', pClass: 'rogue', role: 'cac' },
+			{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+			{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+		])
+	).toEqual(undefined)
+	expect(
+		findCharacter('tank', 'drood', [
+			{ status: 'main', pClass: 'rogue', role: 'cac' },
+			{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+			{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+		])
+	).toEqual({ status: 'mainReroll', pClass: 'drood', role: 'tank' })
+	expect(
+		findCharacter('tank', 'openSlot', [
+			{ status: 'main', pClass: 'rogue', role: 'cac' },
+			{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+			{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+		])
+	).toEqual({ status: 'mainReroll', pClass: 'drood', role: 'tank' })
+})
+
+test('fillMissingMainWithRerolls', () => {
+	expect(
+		fillMissingMainWithRerolls(
+			deepCopy(players),
+			{ tank: { war: 1 } },
+			2,
+			false
+		)
+	).toEqual({
+		rerollAttrib: { tank: { war: ['Abo'] }, heal: {}, dist: {}, cac: {} },
+		nbRerollSelected: 1,
+	})
+	expect(
+		fillMissingMainWithRerolls(deepCopy(players), { tank: { war: 1 } }, 2, true)
+	).toEqual({
+		rerollAttrib: { tank: {}, heal: {}, dist: {}, cac: {} },
+		nbRerollSelected: 0,
+	})
+
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{ tank: { war: 1 } },
+			2,
+			false
+		)
+	).toEqual({
+		rerollAttrib: { tank: { war: ['c'] }, heal: {}, dist: {}, cac: {} },
+		nbRerollSelected: 1,
+	})
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{ tank: { war: 1 }, heal: { paladin: 1 } },
+			2,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: { war: ['c'] },
+			heal: { paladin: ['b'] },
+			dist: {},
+			cac: {},
+		},
+		nbRerollSelected: 2,
+	})
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{ tank: { war: 2 }, heal: { paladin: 1 } },
+			2,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: { war: ['c', 'a'] },
+			heal: {},
+			dist: {},
+			cac: {},
+		},
+		nbRerollSelected: 2,
+	})
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{ tank: { war: 2 }, heal: { paladin: 1 } },
+			3,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: { war: ['c', 'a'] },
+			heal: { paladin: ['b'] },
+			dist: {},
+			cac: {},
+		},
+		nbRerollSelected: 3,
+	})
+
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{ tank: { war: 2 }, heal: { paladin: 1 } },
+			2,
+			true
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: { war: ['c', 'a'] },
+			heal: {},
+			dist: {},
+			cac: {},
+		},
+		nbRerollSelected: 2,
+	})
+
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{ cac: { openSlot: 1 }, heal: { paladin: 1 } },
+			2,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: {},
+			heal: { paladin: ['c'] },
+			dist: {},
+			cac: { paladin: ['b'] },
+		},
+		nbRerollSelected: 2,
+	})
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{ cac: { openSlot: 1 }, tank: { war: 1, openSlot: 1 } },
+			3,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: { war: ['c', 'a'] },
+			heal: {},
+			dist: {},
+			cac: { paladin: ['b'] },
+		},
+		nbRerollSelected: 3,
+	})
+
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{
+				tank: { war: 1, openSlot: 1 },
+				heal: { openSlot: 1 },
+			},
+			3,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: { war: ['a'], paladin: ['b'] },
+			heal: { paladin: ['c'] },
+			dist: {},
+			cac: {},
+		},
+		nbRerollSelected: 3,
+	})
+
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{
+				tank: { war: 1, openSlot: 1 },
+				heal: { openSlot: 2 },
+			},
+			3,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: { war: ['a'], paladin: ['b'] },
+			heal: { paladin: ['c'] },
+			dist: {},
+			cac: {},
+		},
+		nbRerollSelected: 3,
+	})
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'd',
+					characters: [
+						{ status: 'mainReroll', pClass: 'mage', role: 'dist' },
+						{ status: 'reroll', pClass: 'hunt', role: 'dist' },
+					],
+				},
+			],
+			{
+				tank: { war: 1, openSlot: 1 },
+				heal: { openSlot: 1 },
+				cac: { rogue: 1 },
+			},
+			3,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: { war: ['a'], paladin: ['b'] },
+			heal: { paladin: ['c'] },
+			dist: {},
+			cac: {},
+		},
+		nbRerollSelected: 3,
+	})
+	expect(
+		fillMissingMainWithRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					pseudo: 'd',
+					characters: [
+						{ status: 'mainReroll', pClass: 'mage', role: 'dist' },
+						{ status: 'reroll', pClass: 'hunt', role: 'dist' },
+					],
+				},
+			],
+			{
+				heal: { openSlot: 1 },
+			},
+			1,
+			false
+		)
+	).toEqual({
+		rerollAttrib: {
+			tank: {},
+			heal: { paladin: ['c'] },
+			dist: {},
+			cac: {},
+		},
+		nbRerollSelected: 1,
+	})
+})
+
+test('fillRerolls', () => {
+	expect(
+		fillRerolls(
+			[],
+			{
+				maxPlayer: 4,
+				onlyMainReroll: false,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			},
+			2,
+			{ tank: {}, heal: {}, cac: {}, dist: {} },
+			{}
+		)
+	).toEqual({ tank: {}, heal: {}, cac: {}, dist: {} })
+
+	expect(
+		fillRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{
+				maxPlayer: 4,
+				onlyMainReroll: false,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			},
+			2,
+			{ tank: {}, heal: {}, cac: {}, dist: {} },
+			{}
+		)
+	).toEqual({
+		tank: { war: ['c'], paladin: ['b'] },
+		heal: {},
+		cac: {},
+		dist: {},
+	})
+	expect(
+		fillRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{
+				maxPlayer: 4,
+				onlyMainReroll: false,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			},
+			2,
+			{ tank: {}, heal: {}, cac: {}, dist: {} },
+			{ heal: { openSlot: 1 } }
+		)
+	).toEqual({
+		tank: { paladin: ['b'] },
+		heal: { paladin: ['c'] },
+		cac: {},
+		dist: {},
+	})
+
+	expect(
+		fillRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{
+				maxPlayer: 4,
+				onlyMainReroll: false,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			},
+			3,
+			{ tank: {}, heal: {}, cac: {}, dist: {} },
+			{ heal: { openSlot: 1 } }
+		)
+	).toEqual({
+		tank: { paladin: ['b'], war: ['a'] },
+		heal: { paladin: ['c'] },
+		cac: {},
+		dist: {},
+	})
+
+	expect(
+		fillRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{
+				maxPlayer: 4,
+				onlyMainReroll: false,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			},
+			3,
+			{ tank: {}, heal: {}, cac: {}, dist: {} },
+			{}
+		)
+	).toEqual({
+		tank: { war: ['c'], paladin: ['b'] },
+		heal: {},
+		cac: { paladin: ['a'] },
+		dist: {},
+	})
+
+	expect(
+		fillRerolls(
+			[
+				{
+					pseudo: 'a',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'b',
+					characters: [
+						{ status: 'mainReroll', pClass: 'paladin', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'cac' },
+					],
+				},
+				{
+					pseudo: 'c',
+					characters: [
+						{ status: 'mainReroll', pClass: 'war', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			{
+				maxPlayer: 4,
+				onlyMainReroll: false,
+				role: {
+					tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 0, pClassMin: {} },
+					dist: { min: 0, max: 0, pClassMin: {} },
+				},
+			},
+			3,
+			{ tank: {}, heal: {}, cac: {}, dist: {} },
+			{}
+		)
+	).toEqual({
+		tank: { war: ['a'], paladin: ['b'] },
+		heal: { paladin: ['c'] },
+		cac: {},
+		dist: {},
+	})
 })
