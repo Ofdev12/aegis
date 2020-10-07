@@ -5,6 +5,7 @@ const port = process.env.PORT || 5000
 const app = express()
 
 const reactionRouter = require('./routes/discord/reactions')
+const login = require('./routes/discord/login')
 
 // ####################### \\
 //  	   middleWare	   \\
@@ -19,6 +20,7 @@ app.use(bodyParser.urlencoded({ extended: true }))
 // ####################### \\
 
 app.use('/api/discord/reactions', reactionRouter)
+app.use('/api/discord/login', login)
 
 app.get('/', async (req, res) => {
 	res.send('Hello World')

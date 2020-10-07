@@ -5,11 +5,8 @@
 const Discord = require('discord.js')
 const client = new Discord.Client()
 const guild = new Discord.Guild(client)
-const guildChannel = new Discord.TextChannel(guild, {
-	id: '639125966521892879',
-})
 
-const botTokken = 'NzYwOTA5NTIwODg0NTk2Nzc2.X3S6Ng.A0cbhtK0ZoBoTXVxj145wIqTUnY'
+const botTokken = ''
 
 client.login(botTokken)
 
