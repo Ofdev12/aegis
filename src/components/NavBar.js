@@ -4,18 +4,25 @@ import {
 	MailOutlined,
 	AppstoreOutlined,
 	SettingOutlined,
+	UserOutlined,
 } from '@ant-design/icons'
 import './NavBar.css'
 
 const { SubMenu } = Menu
 
-export const NavBar = ({ userInfos, login }) => {
 export const NavBar = ({ userInfos, login, setVisible }) => {
 	const [current, setCurrent] = useState('accueil')
 
 	const handleClick = (e) => {
 		// console.log('click ', e)
 		setCurrent(e.key)
+	}
+	const profile = () => {
+		return (
+			<div>
+				<UserOutlined /> <span>{userInfos.username}</span>
+			</div>
+		)
 	}
 
 	return (
@@ -44,11 +51,9 @@ export const NavBar = ({ userInfos, login, setVisible }) => {
 			<Menu.Item key='discord'>
 				<div
 					onClick={() => {
-						userInfos ? console.log('CONNECTED GO PROFILE') : login()
 						userInfos ? setVisible(true) : login()
 					}}
 				>
-					{userInfos ? `Bonjour ${userInfos.username}` : 'Discord'}
 					{userInfos ? profile() : 'Discord'}
 				</div>
 			</Menu.Item>
