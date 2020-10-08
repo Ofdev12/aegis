@@ -10,6 +10,7 @@ import './NavBar.css'
 const { SubMenu } = Menu
 
 export const NavBar = ({ userInfos, login }) => {
+export const NavBar = ({ userInfos, login, setVisible }) => {
 	const [current, setCurrent] = useState('accueil')
 
 	const handleClick = (e) => {
@@ -44,9 +45,11 @@ export const NavBar = ({ userInfos, login }) => {
 				<div
 					onClick={() => {
 						userInfos ? console.log('CONNECTED GO PROFILE') : login()
+						userInfos ? setVisible(true) : login()
 					}}
 				>
 					{userInfos ? `Bonjour ${userInfos.username}` : 'Discord'}
+					{userInfos ? profile() : 'Discord'}
 				</div>
 			</Menu.Item>
 		</Menu>

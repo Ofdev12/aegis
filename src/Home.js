@@ -4,18 +4,20 @@ import Cookies from 'js-cookie'
 import { Button } from 'antd'
 import { Carrousel } from './components/Carrousel'
 import { NavBar } from './components/NavBar'
+import { DrawerCharacter } from './components/Drawer'
 
 import './Home.css'
 
 const api = 'http://localhost:5000/api/discord/login'
 const redirectRoot = 'http://localhost:3000'
 
-const CLIENT_ID = ''
 const redirect = encodeURIComponent('http://localhost:3000/')
 const targetBase = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${redirect}&response_type=code&scope=identify%20email%20guilds`
 
 export const Home = (props) => {
 	const [userInfos, setUserInfos] = useState({})
+	const [visible, setVisible] = useState(false)
+	const [character, setCharacter] = useState({})
 
 	const login = async (cookieParsed, code) => {
 		if (cookieParsed) {
@@ -67,7 +69,11 @@ export const Home = (props) => {
 		<div>
 			<Carrousel />
 			<div className='home_main'>
-				<NavBar userInfos={userInfos.user} login={login} />
+				<NavBar
+					userInfos={userInfos.user}
+					login={login}
+					setVisible={setVisible}
+				/>
 			</div>
 			<div>{props.children}</div>
 			<Link to='/admin'>
@@ -75,6 +81,12 @@ export const Home = (props) => {
 					go Admin
 				</Button>
 			</Link>
+			<DrawerCharacter
+				visible={visible}
+				setVisible={setVisible}
+				character={character}
+				setCharacter={setCharacter}
+			/>
 		</div>
 	)
 }
