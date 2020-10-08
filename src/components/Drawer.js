@@ -16,7 +16,7 @@ export const DrawerCharacter = ({
 			title='User profil'
 			placement='right'
 			closable={false}
-			width='1000'
+			width='40%'
 			keyboard
 			onClose={() => setVisible(false)}
 			visible={visible}
@@ -26,7 +26,7 @@ export const DrawerCharacter = ({
 				<Input.Group compact size='Large'>
 					<Select
 						placeholder='Main class'
-						style={{ minWidth: '20%' }}
+						style={{ minWidth: '30%' }}
 						showSearch
 						optionFilterProp='children'
 						filterOption={(input, option) =>
@@ -72,7 +72,7 @@ export const DrawerCharacter = ({
 				<Input.Group compact size='Large'>
 					<Select
 						placeholder='Main Reroll class'
-						style={{ minWidth: '20%' }}
+						style={{ minWidth: '30%' }}
 						showSearch
 						optionFilterProp='children'
 						filterOption={(input, option) =>
@@ -118,7 +118,7 @@ export const DrawerCharacter = ({
 				<Input.Group compact size='Large'>
 					<Select
 						placeholder='Reroll class'
-						style={{ minWidth: '20%' }}
+						style={{ minWidth: '30%' }}
 						showSearch
 						optionFilterProp='children'
 						filterOption={(input, option) =>
@@ -164,7 +164,7 @@ export const DrawerCharacter = ({
 				<Input.Group compact size='Large'>
 					<Select
 						placeholder='Reroll class'
-						style={{ minWidth: '20%' }}
+						style={{ minWidth: '30%' }}
 						showSearch
 						optionFilterProp='children'
 						filterOption={(input, option) =>
@@ -210,7 +210,7 @@ export const DrawerCharacter = ({
 				<Input.Group compact size='Large'>
 					<Select
 						placeholder='Reroll class'
-						style={{ minWidth: '20%' }}
+						style={{ minWidth: '30%' }}
 						showSearch
 						optionFilterProp='children'
 						filterOption={(input, option) =>

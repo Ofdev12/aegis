@@ -54,7 +54,7 @@ export const NavBar = ({ userInfos, login, setVisible }) => {
 						userInfos ? setVisible(true) : login()
 					}}
 				>
-					{userInfos ? profile() : 'Discord'}
+					{userInfos ? profile() : 'Discord connect'}
 				</div>
 			</Menu.Item>
 		</Menu>
