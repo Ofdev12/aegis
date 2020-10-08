@@ -17,11 +17,7 @@ export const Home = (props) => {
 		<div>
 			<Carrousel />
 			<div className='home_main'>
-				<NavBar
-					userInfos={userInfos.user}
-					login={login}
-					setVisible={setVisible}
-				/>
+				<NavBar userInfos={userInfos} login={login} setVisible={setVisible} />
 			</div>
 			<div>{props.children}</div>
 			<Link to='/admin'>

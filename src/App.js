@@ -27,7 +27,13 @@ const App = () => {
 				body: JSON.stringify(cookieParsed),
 			})
 			const json = await response.json()
-			setUserInfos(json)
+			const user = {
+				...json.user,
+				guild: {
+					...json.guilds.filter((item) => item.id === guildID)[0],
+				},
+			}
+			setUserInfos(user)
 		} else if (!cookieParsed && code) {
 			const codeFormated = { code: window.location.search.split('=')[1] }
 			const response = await fetch(`${api}/token`, {
@@ -43,16 +49,22 @@ const App = () => {
 				{
 					token_type: json.token.token_type,
 					access_token: json.token.access_token,
+					refresh_token: json.token.refresh_token,
 				},
 				{ expires: 7 }
 			)
+			const user = {
+				...json.userInfos.user,
+				guild: {
+					...json.userInfos.guilds.filter((item) => item.id === guildID)[0],
+				},
+			}
 			navigate(`${redirectRoot}`)
-			setUserInfos(json.userInfos)
+			setUserInfos(user)
 		} else {
 			navigate(targetBase)
 		}
 	}
-
 	useEffect(() => {
 		const cookies = Cookies.get('aegis_discord')
 		const cookieParsed = cookies ? JSON.parse(cookies) : false
