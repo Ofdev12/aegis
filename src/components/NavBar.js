@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Menu } from 'antd'
 import {
 	MailOutlined,
@@ -11,27 +11,16 @@ import './NavBar.css'
 const { SubMenu } = Menu
 
 export const NavBar = ({ userInfos, login, setVisible }) => {
-	const [current, setCurrent] = useState('accueil')
-
-	const handleClick = (e) => {
-		// console.log('click ', e)
-		setCurrent(e.key)
-	}
 	const profile = () => {
 		return (
-			<div>
+			<>
 				<UserOutlined /> <span>{userInfos.username}</span>
-			</div>
+			</>
 		)
 	}
 
 	return (
-		<Menu
-			className='nav_bar'
-			onClick={handleClick}
-			selectedKeys={[current]}
-			mode='horizontal'
-		>
+		<Menu className='nav_bar' selectedKeys={['accueil']} mode='horizontal'>
 			<Menu.Item key='accueil' icon={<MailOutlined />}>
 				Accueil
 			</Menu.Item>

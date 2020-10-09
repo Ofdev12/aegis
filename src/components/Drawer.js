@@ -2,12 +2,8 @@ import React from 'react'
 import { Button, Drawer, Input, Select } from 'antd'
 const { Option } = Select
 
-export const DrawerCharacter = ({
-	visible,
-	setVisible,
-	character,
-	setCharacter,
-}) => {
+export const DrawerCharacter = (props) => {
+	const { visible, setVisible, character, setCharacter } = props
 	const saveCharacter = () => {
 		console.log(character)
 	}

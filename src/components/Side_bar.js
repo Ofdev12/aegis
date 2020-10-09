@@ -4,13 +4,8 @@ import { Menu } from 'antd'
 import { Link } from '@reach/router'
 
 export const Sider = ({ location }) => {
-	const handleClick = (e) => {
-		console.log('click ', e)
-	}
-
 	return (
 		<Menu
-			onClick={handleClick}
 			style={{ width: 256 }}
 			defaultSelectedKeys={[`${location}`]}
 			mode='inline'
