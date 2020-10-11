@@ -4,7 +4,7 @@ import {
 	computeMainBenchWeigth,
 	computeRerollWeight,
 	computeRerollBenchWeight,
-	getBenchOrdered,
+	getMainBenchOrdered,
 	getRerollOrdered,
 	getMain,
 	fillPClassMainRatio,
@@ -22,6 +22,9 @@ import {
 	findCharacter,
 	fillMissingMainWithRerolls,
 	fillRerolls,
+	addAttribs,
+	completeFillWithMain,
+	fill,
 } from './algo.js'
 
 const testConstraints = {
@@ -110,6 +113,10 @@ const players = [
 		characters: [{ status: 'main', pClass: 'war', role: 'cac' }],
 	},
 ]
+
+const getBench = (players) => players.filter(({ isBenched }) => isBenched)
+const keepPseudoOnly = (players) => players.map(({ pseudo }) => pseudo)
+
 // DeepMerge
 test('DeepMerge', () => {
 	expect(deepMerge(testConstraints)).toEqual(testConstraints)
@@ -187,12 +194,12 @@ test('computeRerollBenchWeight', () => {
 	expect(computeRerollBenchWeight(players[2], raidDate)).toEqual(0)
 })
 
-test('getBenchOrdered', () => {
-	expect(getBenchOrdered(deepCopy(players), raidDate, testConstraints)).toEqual(
-		false
-	)
+test('getMainBenchOrdered', () => {
 	expect(
-		getBenchOrdered(
+		getMainBenchOrdered(deepCopy(players), raidDate, testConstraints)
+	).toEqual(false)
+	expect(
+		getMainBenchOrdered(
 			[
 				{
 					MainBench: 0,
@@ -1533,5 +1540,1199 @@ test('fillRerolls', () => {
 		heal: { paladin: ['c'] },
 		cac: {},
 		dist: {},
+	})
+})
+
+test('addAttribs', () => {
+	expect(
+		addAttribs(
+			{ tank: {}, heal: {}, cac: {}, dist: {} },
+			{ tank: {}, heal: {}, cac: {}, dist: {} }
+		)
+	).toEqual({ tank: {}, heal: {}, cac: {}, dist: {} })
+	expect(
+		addAttribs(
+			{ tank: { war: ['a'] }, heal: {}, cac: {}, dist: {} },
+			{ tank: {}, heal: {}, cac: {}, dist: {} }
+		)
+	).toEqual({ tank: { war: ['a'] }, heal: {}, cac: {}, dist: {} })
+	expect(
+		addAttribs(
+			{ tank: { war: ['a'] }, heal: {}, cac: {}, dist: {} },
+			{ tank: {}, heal: {}, cac: { rogue: ['b'] }, dist: {} }
+		)
+	).toEqual({ tank: { war: ['a'] }, heal: {}, cac: { rogue: ['b'] }, dist: {} })
+	expect(
+		addAttribs(
+			{ tank: { war: ['a'] }, heal: {}, cac: {}, dist: {} },
+			{ tank: { war: ['c'] }, heal: {}, cac: { rogue: ['b'] }, dist: {} }
+		)
+	).toEqual({
+		tank: { war: ['a', 'c'] },
+		heal: {},
+		cac: { rogue: ['b'] },
+		dist: {},
+	})
+
+	expect(
+		addAttribs(
+			{ tank: { war: ['a'] }, heal: {}, cac: {}, dist: {} },
+			{ tank: { paladin: ['c'] }, heal: {}, cac: { rogue: ['b'] }, dist: {} }
+		)
+	).toEqual({
+		tank: { war: ['a'], paladin: ['c'] },
+		heal: {},
+		cac: { rogue: ['b'] },
+		dist: {},
+	})
+})
+
+test('completeFillWithMain', () => {
+	let players = [
+		{
+			pseudo: 'a',
+			characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+		},
+
+		{
+			pseudo: 'b',
+			characters: [{ status: 'main', pClass: 'war', role: 'cac' }],
+		},
+	]
+	let res = completeFillWithMain(
+		players,
+		{
+			maxPlayer: 4,
+			role: {
+				tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+				heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+				cac: { min: 0, max: 2, pClassMin: {} },
+				dist: { min: 0, max: 1, pClassMin: {} },
+			},
+		},
+		{ tank: { war: ['z'] }, heal: { paladin: ['y'] } }
+	)
+	expect({ ...res, bench: keepPseudoOnly(getBench(players)) }).toEqual({
+		fillAttrib: {
+			tank: { war: ['a'] },
+			heal: {},
+			cac: { war: ['b'] },
+			dist: {},
+		},
+		bench: [],
+	})
+
+	players = [
+		{
+			pseudo: 'a',
+			characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+		},
+
+		{
+			pseudo: 'b',
+			characters: [{ status: 'main', pClass: 'war', role: 'cac' }],
+		},
+	]
+	res = completeFillWithMain(
+		players,
+		{
+			maxPlayer: 4,
+			role: {
+				tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+				heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+				cac: { min: 0, max: 2, pClassMin: {} },
+				dist: { min: 0, max: 1, pClassMin: {} },
+			},
+		},
+		{ tank: { war: ['z'] }, heal: { paladin: ['y'] }, dist: { mage: ['x'] } }
+	)
+	expect({ ...res, bench: keepPseudoOnly(getBench(players)) }).toEqual({
+		fillAttrib: { tank: { war: ['a'] }, heal: {}, cac: {}, dist: {} },
+		bench: [],
+	})
+
+	players = [
+		{
+			pseudo: 'a',
+			characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+		},
+
+		{
+			pseudo: 'b',
+			characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+		},
+		{
+			pseudo: 'c',
+			characters: [{ status: 'main', pClass: 'war', role: 'cac' }],
+			isBenched: true,
+		},
+	]
+	res = completeFillWithMain(
+		players,
+		{
+			maxPlayer: 4,
+			role: {
+				tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+				heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+				cac: { min: 0, max: 2, pClassMin: {} },
+				dist: { min: 0, max: 1, pClassMin: {} },
+			},
+		},
+		{ tank: { war: ['z'] }, heal: { paladin: ['y'] }, dist: {} }
+	)
+	expect({ ...res, bench: keepPseudoOnly(getBench(players)) }).toEqual({
+		fillAttrib: {
+			tank: { war: ['a'] },
+			heal: {},
+			cac: { war: ['c'] },
+			dist: {},
+		},
+		bench: ['b'],
+	})
+
+	players = [
+		{
+			pseudo: 'a',
+			characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+		},
+		{
+			pseudo: 'b',
+			characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+		},
+		{
+			pseudo: 'd',
+			characters: [{ status: 'main', pClass: 'mage', role: 'dist' }],
+		},
+		{
+			pseudo: 'c',
+			characters: [{ status: 'main', pClass: 'war', role: 'cac' }],
+			isBenched: true,
+		},
+	]
+	res = completeFillWithMain(
+		players,
+		{
+			maxPlayer: 5,
+			role: {
+				tank: { min: 1, max: 2, pClassMin: { war: 1 } },
+				heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+				cac: { min: 0, max: 2, pClassMin: {} },
+				dist: { min: 0, max: 1, pClassMin: {} },
+			},
+		},
+		{ tank: { war: ['z'] }, heal: { paladin: ['y'] }, dist: {} }
+	)
+	expect({ ...res, bench: keepPseudoOnly(getBench(players)) }).toEqual({
+		fillAttrib: {
+			tank: { war: ['a'] },
+			heal: {},
+			cac: { war: ['c'] },
+			dist: { mage: ['d'] },
+		},
+		bench: ['b'],
+	})
+
+	players = [
+		{
+			pseudo: 'a',
+			characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+		},
+		{
+			pseudo: 'b',
+			characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+		},
+		{
+			pseudo: 'c',
+			characters: [{ status: 'main', pClass: 'war', role: 'cac' }],
+			isBenched: true,
+		},
+	]
+	res = completeFillWithMain(
+		players,
+		{
+			maxPlayer: 4,
+			role: {
+				tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+				heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+				cac: { min: 0, max: 2, pClassMin: {} },
+				dist: { min: 0, max: 1, pClassMin: {} },
+			},
+		},
+		{ tank: { war: ['z'] }, heal: { paladin: ['y'] }, dist: {} }
+	)
+
+	expect({ ...res, bench: keepPseudoOnly(getBench(players)) }).toEqual({
+		fillAttrib: {
+			tank: { war: ['b'] },
+			heal: {},
+			cac: { war: ['c'] },
+			dist: {},
+		},
+		bench: ['a'],
+		overslot: [
+			{
+				pseudo: 'b',
+				characters: [{ status: 'main', pClass: 'war', role: 'tank' }],
+				isSelected: true,
+				isOverSlot: true,
+			},
+		],
+	})
+})
+
+test('fill', () => {
+	let players = [
+		{
+			RaidReroll: 1,
+			LastRR: '2020-09-01T15:00:00',
+			MainBench: 0,
+			LastMB: null,
+			rank: 'raider',
+			pseudo: 'a',
+			rerollWanted: true,
+			characters: [
+				{ status: 'main', pClass: 'war', role: 'tank' },
+				{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+				{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+			],
+		},
+		{
+			RaidReroll: 1,
+			LastRR: '2020-08-01T15:00:00',
+			MainBench: 0,
+			LastMB: null,
+			rank: 'raider',
+			pseudo: 'b',
+			rerollWanted: true,
+			characters: [
+				{ status: 'main', pClass: 'drood', role: 'tank' },
+				{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+				{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+			],
+		},
+		{
+			RaidReroll: 1,
+			LastRR: '2020-09-01T15:00:00',
+			MainBench: 0,
+			LastMB: null,
+			rank: 'raider',
+			pseudo: 'c',
+			rerollWanted: false,
+			characters: [{ status: 'main', pClass: 'rogue', role: 'cac' }],
+		},
+		{
+			RaidReroll: 1,
+			LastRR: '2020-09-01T15:00:00',
+			MainBench: 0,
+			LastMB: null,
+			rank: 'raider',
+			pseudo: 'd',
+			rerollWanted: true,
+			characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+		},
+	]
+	expect(
+		fill(players, raidDate, 1, {
+			maxPlayer: 4,
+			mainRatio: 0.5,
+			role: {
+				tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+				heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+				cac: { min: 0, max: 1, pClassMin: {} },
+				dist: { min: 0, max: 1, pClassMin: {} },
+			},
+		})
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: { rogue: ['c'] },
+			dist: { hunt: ['d'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: [],
+		overslot: [],
+		rerolls: ['b'],
+	})
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'rogue', role: 'cac' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'e',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: { rogue: ['c'] },
+			dist: { hunt: ['d'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: ['e'],
+		overslot: [],
+		rerolls: ['b'],
+	})
+
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-09-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: {},
+			dist: { hunt: ['c', 'd'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: [],
+		overslot: ['d'],
+		rerolls: ['b'],
+	})
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'e',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: {},
+			dist: { hunt: ['d', 'e'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: ['c'],
+		overslot: ['e'],
+		rerolls: ['b'],
+	})
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-09-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'e',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: {},
+			dist: { hunt: ['c', 'e'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: ['d'],
+		overslot: ['e'],
+		rerolls: ['b'],
+	})
+
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-09-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-08-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'e',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: {},
+			dist: { hunt: ['c', 'd'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: ['e'],
+		overslot: ['d'],
+		rerolls: ['b'],
+	})
+
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-09-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-08-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'e',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 20,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'f',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'rogue', role: 'cac' }],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: { rogue: ['f'] },
+			dist: { hunt: ['c'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: ['d', 'e'],
+		overslot: [],
+		rerolls: ['b'],
+	})
+
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-09-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-08-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'e',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 20,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'f',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'rogue', role: 'cac' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'g',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['g'] },
+			cac: { rogue: ['f'] },
+			dist: { hunt: ['c'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: ['d', 'b', 'e'],
+		overslot: [],
+		rerolls: ['g'],
+	})
+
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-08-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-09-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-08-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'e',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 20,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'f',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'rogue', role: 'cac' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'g',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: { rogue: ['f'] },
+			dist: { hunt: ['c'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: ['d', 'e', 'g'],
+		overslot: [],
+		rerolls: ['b'],
+	})
+
+	expect(
+		fill(
+			[
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'a',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'war', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'tank' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-08-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'b',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-09-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'c',
+					rerollWanted: false,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 1,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-08-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'd',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'e',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'hunt', role: 'dist' }],
+				},
+				{
+					RaidReroll: 20,
+					LastRR: '2020-09-01T15:00:00',
+					MainBench: 0,
+					LastMB: null,
+					rank: 'raider',
+					pseudo: 'f',
+					rerollWanted: true,
+					characters: [{ status: 'main', pClass: 'rogue', role: 'cac' }],
+				},
+				{
+					RaidReroll: 2,
+					LastRR: '2020-08-01T15:00:00',
+					MainBench: 1,
+					LastMB: '2020-07-01T15:00:00',
+					rank: 'raider',
+					pseudo: 'g',
+					rerollWanted: true,
+					characters: [
+						{ status: 'main', pClass: 'drood', role: 'tank' },
+						{ status: 'mainReroll', pClass: 'drood', role: 'heal' },
+						{ status: 'reroll', pClass: 'paladin', role: 'heal' },
+					],
+				},
+			],
+			raidDate,
+			1,
+			{
+				maxPlayer: 4,
+				mainRatio: 0.5,
+				role: {
+					tank: { min: 1, max: 1, pClassMin: { war: 1 } },
+					heal: { min: 1, max: 2, pClassMin: { paladin: 1 } },
+					cac: { min: 0, max: 1, pClassMin: {} },
+					dist: { min: 0, max: 1, pClassMin: {} },
+				},
+			}
+		)
+	).toEqual({
+		attrib: {
+			tank: { war: ['a'] },
+			heal: { paladin: ['b'] },
+			cac: { rogue: ['f'] },
+			dist: { hunt: ['c'] },
+		},
+		mainMissing: { heal: { paladin: 1 } },
+		quotaMissing: {},
+		playerMissing: 0,
+		bench: ['d', 'g', 'e'],
+		overslot: [],
+		rerolls: ['b'],
 	})
 })
