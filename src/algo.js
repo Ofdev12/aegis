@@ -630,10 +630,7 @@ export const fillRerolls = (
 	const missingMax = {}
 	let missingRoleTotal = 0
 	for (const [role, { max }] of Object.entries(constraints.role)) {
-		const nbPlayer = Object.values(attrib[role]).reduce(
-			(acc, entry) => acc + entry.length,
-			0
-		)
+		const nbPlayer = getNbAttributtedRole(attrib, role)
 		const missingPlayers = max - nbPlayer
 		if (missingPlayers) missingMax[role] = { openSlot: max - nbPlayer }
 		missingRoleTotal += missingPlayers
