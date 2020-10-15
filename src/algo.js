@@ -215,6 +215,12 @@ export const getNbAttributedSlots = (attrib) =>
 			acc + Object.values(role).reduce((acc2, val) => acc2 + val.length, 0),
 		0
 	)
+// Get the number of players of a given role in an attribution
+export const getNbAttributtedRole = (attrib, role) =>
+	Object.values(attrib[role]).reduce((acc, val) => acc + val.length, 0)
+// Get the number of players of a given role and pClass in an attribution
+export const getNbAttributtedPClass = (attrib, role, pClass) =>
+	attrib[role][pClass] ? attrib[role][pClass].length : 0
 
 //////////////////////
 //  Analyse quotas  //

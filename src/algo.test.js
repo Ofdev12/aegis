@@ -25,6 +25,8 @@ import {
 	addAttribs,
 	completeFillWithMain,
 	fill,
+	getNbAttributtedRole,
+	getNbAttributtedPClass,
 } from './algo.js'
 
 const testConstraints = {
@@ -2735,4 +2737,77 @@ test('fill', () => {
 		overslot: [],
 		rerolls: ['b'],
 	})
+})
+
+test('getNbAttributtedRole', () => {
+	expect(
+		getNbAttributtedRole({ heal: {}, tank: {}, cac: {}, dist: {} }, 'heal')
+	).toEqual(0)
+	expect(
+		getNbAttributtedRole(
+			{ heal: { paladin: [1, 2, 3] }, tank: {}, cac: {}, dist: {} },
+			'heal'
+		)
+	).toEqual(3)
+	expect(
+		getNbAttributtedRole(
+			{
+				heal: { paladin: [1, 2, 3] },
+				tank: { war: [1, 2, 3] },
+				cac: {},
+				dist: {},
+			},
+			'heal'
+		)
+	).toEqual(3)
+	expect(
+		getNbAttributtedRole(
+			{
+				heal: { paladin: [1, 2, 3], drood: [1, 2] },
+				tank: {},
+				cac: {},
+				dist: {},
+			},
+			'heal'
+		)
+	).toEqual(5)
+})
+
+test('getNbAttributtedPClass', () => {
+	expect(
+		getNbAttributtedPClass(
+			{
+				heal: {},
+				tank: {},
+				cac: {},
+				dist: {},
+			},
+			'heal',
+			'paladin'
+		)
+	).toEqual(0)
+	expect(
+		getNbAttributtedPClass(
+			{
+				heal: { paladin: [1, 2, 3], drood: [1, 2] },
+				tank: {},
+				cac: {},
+				dist: {},
+			},
+			'heal',
+			'paladin'
+		)
+	).toEqual(3)
+	expect(
+		getNbAttributtedPClass(
+			{
+				heal: { drood: [1, 2] },
+				tank: { paladin: [1, 2, 3] },
+				cac: {},
+				dist: {},
+			},
+			'heal',
+			'paladin'
+		)
+	).toEqual(0)
 })
