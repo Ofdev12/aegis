@@ -13,14 +13,16 @@ const defaultConstraints = {
 	},
 }
 
+//////////////////////
+//  Compute weigth  //
+//////////////////////
+
 // Compute the Number of weeks since the given date.
 const getNbWeek = (start, end) =>
 	Math.floor((new Date(end) - new Date(start)) / millisecInWeek)
-
 // Compute common calculation for bench and reroll weights.
 const computeBaseWeight = (nb, lastDate, raidDate) =>
 	nb ? nb * nbFactor - getNbWeek(lastDate, raidDate) : 0
-
 // Compute the priority for benching Main. The highest shouldn't be benched.
 export const computeMainBenchWeigth = (
 	{ MainBench, LastMB, rank },
@@ -30,7 +32,6 @@ export const computeMainBenchWeigth = (
 	const raiderBonus = rank === 'raider' ? raiderFactor : 0
 	return benchBonus + raiderBonus
 }
-
 // Compute the Reroll priority. The lowest should be rerolling.
 export const computeRerollWeight = (
 	{ RaidReroll, LastRR, rerollWanted, characters },
@@ -45,6 +46,36 @@ export const computeRerollBenchWeight = ({ RerollBench, LastRB }, raidDate) => {
 	return computeBaseWeight(RerollBench, LastRB, raidDate)
 }
 
+///////////////////////////
+//  Compute constraints  //
+///////////////////////////
+
+// Merge customConstraints with defaultConstraints.
+const computeCustomConstraints = (customConstraints) =>
+	deepMerge(defaultConstraints, customConstraints)
+// Apply mainRatio to a given constraint.
+export const computeMainConstraint = (constraints) => {
+	const result = {}
+	for (const [key, { min, max, pClassMin }] of Object.entries(
+		constraints.role
+	)) {
+		// Compute min constraint for each pClass.
+		const mainPClassMin = {}
+		for (const [pClassName, pClassConstraint] of Object.entries(pClassMin)) {
+			mainPClassMin[pClassName] = pClassConstraint * constraints.mainRatio
+		}
+		result[key] = {
+			min: min * constraints.mainRatio,
+			max,
+			pClassMin: mainPClassMin,
+		}
+	}
+	return result
+}
+
+//////////////////////////
+//  Manipulate objects  //
+//////////////////////////
 // Merge src2 into src1.
 export const deepMerge = (src1, src2) => {
 	if (src2 === undefined) return src1
@@ -67,30 +98,28 @@ export const deepMerge = (src1, src2) => {
 	}
 	return src2 || src1
 }
-
-// Merge customConstraints with defaultConstraints.
-const computeCustomConstraints = (customConstraints) =>
-	deepMerge(defaultConstraints, customConstraints)
-
-// Apply mainRatio to a given constraint.
-export const computeMainConstraint = (constraints) => {
-	const result = {}
-	for (const [key, { min, max, pClassMin }] of Object.entries(
-		constraints.role
-	)) {
-		// Compute min constraint for each pClass.
-		const mainPClassMin = {}
-		for (const [pClassName, pClassConstraint] of Object.entries(pClassMin)) {
-			mainPClassMin[pClassName] = pClassConstraint * constraints.mainRatio
-		}
-		result[key] = {
-			min: min * constraints.mainRatio,
-			max,
-			pClassMin: mainPClassMin,
-		}
+// Deep copy an array or an object (functions aren't handled)
+export const deepCopy = (target) => {
+	if (target === null) return null
+	if (Array.isArray(target)) {
+		return target.map(deepCopy)
 	}
-	return result
+	if (typeof target === 'object') {
+		const res = {}
+		for (const [key, value] of Object.entries(target)) {
+			res[key] = deepCopy(value)
+		}
+		return res
+	}
+	return target
 }
+// Tests if an object or an array is empty
+export const isEmpty = (obj) =>
+	obj === null || obj === undefined ? true : Object.keys(obj).length === 0
+
+/////////////////////
+//  Order players  //
+/////////////////////
 
 // Compute the bench weight of each players and return
 // an array sorted by ascending bench weight if bench
@@ -103,7 +132,6 @@ export const getMainBenchOrdered = (players, date, constraints) => {
 	players.sort((a, b) => a.mainBenchWeigth - b.mainBenchWeigth) // ascending order
 	return players
 }
-
 // Compute the reroll weight of each players and return
 // an array sorted by descending reroll weight. The
 // non-reroll players are placed at the beginning.
@@ -119,44 +147,33 @@ export const getRerollOrdered = (players, date) => {
 	]
 }
 
+/////////////////////////////
+//  Get player characters  //
+/////////////////////////////
+
 // Get the main character of a player.
 export const getMain = ({ characters }) =>
 	characters.filter(({ status }) => status === 'main')[0]
+// Find a character matching the description (role & pClass)
+export const findCharacter = (r, pC, characters) =>
+	pC === 'openSlot'
+		? characters.find(({ role }) => role === r)
+		: characters.find(({ role, pClass }) => role === r && pClass === pC)
+// Get only main reroll.
+const getMainReroll = (characters) =>
+	characters.filter(({ status }) => status === 'mainReroll')
+// Get all the rerolls of an user
+const getAllRerolls = (characters) =>
+	characters.filter(({ status }) => status !== 'main')
+// Get the rerolls of a player
+const getPlayerRerolls = (player, onlyMainReroll) =>
+	onlyMainReroll
+		? getMainReroll(player.characters)
+		: getAllRerolls(player.characters)
 
-// Find players' mainCharacter to fit the roles.
-// The flag isSelected is set on selected players.
-export const fillPClassMainRatio = (players, roles, init) => {
-	const result = init || { tank: {}, heal: {}, cac: {}, dist: {} }
-	for (const player of players) {
-		const { pClass, role } = getMain(player)
-		// Get role and pClass min constraint
-		const pClassMin =
-			roles[role] !== undefined &&
-			roles[role].pClassMin !== undefined &&
-			roles[role].pClassMin[pClass]
-		// If the class is in quotas
-		if (pClassMin) {
-			if (!result[role][pClass]) result[role][pClass] = []
-			//If the quota isn't fulfielled
-			if (result[role][pClass].length < pClassMin) {
-				addToAttrib(player, result, role, pClass)
-				player.isSelected = true
-				// If the pClass quota is fulfielled but not the openSlot one.
-			} else if (isInOpenMinQuota(role, roles[role], result)) {
-				addToAttrib(player, result, role, pClass)
-				player.isSelected = true
-				player.isOpenSlot = true
-			}
-			//If the class isn't in quota and the openSlot quota isn't fulfielled.
-		} else if (roles[role] && isInOpenMinQuota(role, roles[role], result)) {
-			addToAttrib(player, result, role, pClass)
-			player.isSelected = true
-			player.isOpenSlot = true
-		}
-	}
-	return result
-}
-
+//////////////////////
+//  Analyse attribs  //
+//////////////////////
 // Compare the number of players in the result to the expected Pclass population.
 export const analyseMissingMin = (res, roles) => {
 	const missingPlayers = {}
@@ -191,15 +208,17 @@ export const analyseMissingMin = (res, roles) => {
 	}
 	return missingPlayers
 }
+// Get the number of attributed slots.
+export const getNbAttributedSlots = (attrib) =>
+	Object.values(attrib).reduce(
+		(acc, role) =>
+			acc + Object.values(role).reduce((acc2, val) => acc2 + val.length, 0),
+		0
+	)
 
-// Tests if an object or an array is empty
-export const isEmpty = (obj) =>
-	obj === null || obj === undefined ? true : Object.keys(obj).length === 0
-
-// Tests if the Class Quota is not fulfielled.
-export const isInClassQuotas = ({ role, pClass }, report) =>
-	Boolean(report[role] && report[role][pClass])
-
+//////////////////////
+//  Analyse quotas  //
+//////////////////////
 // Gets the number of slot available for a specific role without specific role.
 export const getRoleOpenedMinQuota = (roleConstraints) => {
 	if (!roleConstraints.min) return 0
@@ -211,7 +230,6 @@ export const getRoleOpenedMinQuota = (roleConstraints) => {
 		: 0
 	return roleConstraints.min - fixedQuota
 }
-
 // Get the number of players attributed to an open slot for a given role.
 export const getRoleOpenedAttributed = (role, roleConstraints, attrib) => {
 	if (!attrib[role]) return 0
@@ -223,7 +241,9 @@ export const getRoleOpenedAttributed = (role, roleConstraints, attrib) => {
 		return acc + Math.max(0, val.length - pClassMin)
 	}, 0)
 }
-
+// Tests if the Class Quota is not fulfielled.
+export const isInClassQuotas = ({ role, pClass }, report) =>
+	Boolean(report[role] && report[role][pClass])
 // Tests if the open min quota is fulfielled.
 export const isInOpenMinQuota = (role, roleConstraints, attrib) => {
 	const openedMin = getRoleOpenedMinQuota(roleConstraints)
@@ -231,7 +251,6 @@ export const isInOpenMinQuota = (role, roleConstraints, attrib) => {
 	const openAttributed = getRoleOpenedAttributed(role, roleConstraints, attrib)
 	return openAttributed < openedMin
 }
-
 // Get the number of OpenSlots.
 export const getMaxOpenSlots = (roleConstraints) => {
 	if (!roleConstraints.max) return 0
@@ -243,15 +262,6 @@ export const getMaxOpenSlots = (roleConstraints) => {
 		: 0
 	return roleConstraints.max - fixedQuota
 }
-
-// Get the number of attributed slots.
-export const getNbAttributedSlots = (attrib) =>
-	Object.values(attrib).reduce(
-		(acc, role) =>
-			acc + Object.values(role).reduce((acc2, val) => acc2 + val.length, 0),
-		0
-	)
-
 // Check if the character can be added. Returns 'pClassMin' if it fits the MinQuotas,
 // 'openSlot' if it fits the Open Quotas, or false.
 export const isRespectingMax = ({ pClass, role }, constraints, attrib) => {
@@ -274,21 +284,10 @@ export const isRespectingMax = ({ pClass, role }, constraints, attrib) => {
 	const maxOpenSlot = getMaxOpenSlots(roleConstraints)
 	return openSlotsAttributed < maxOpenSlot ? 'openSlot' : false
 }
-// Deep copy an array or an object (functions aren't handled)
-export const deepCopy = (target) => {
-	if (target === null) return null
-	if (Array.isArray(target)) {
-		return target.map(deepCopy)
-	}
-	if (typeof target === 'object') {
-		const res = {}
-		for (const [key, value] of Object.entries(target)) {
-			res[key] = deepCopy(value)
-		}
-		return res
-	}
-	return target
-}
+
+/////////////////////////////
+//  Analyse player attrib  //
+/////////////////////////////
 // Find the role and the pClass assigned to a player in a given attribution
 export const findPlayerAttrib = (pseudo, attrib) => {
 	if (!pseudo || !attrib) return
@@ -298,35 +297,15 @@ export const findPlayerAttrib = (pseudo, attrib) => {
 		}
 	}
 }
-
-// Find a character matching the description (role & pClass)
-export const findCharacter = (r, pC, characters) =>
-	pC === 'openSlot'
-		? characters.find(({ role }) => role === r)
-		: characters.find(({ role, pClass }) => role === r && pClass === pC)
-
-// Get the selected players
-const getAttributed = (players) =>
-	players.filter(({ isSelected }) => isSelected)
-// The non selected players
-const getNonAttributed = (players) =>
-	players.filter(({ isSelected }) => !isSelected)
-
-// Get only main reroll.
-const getMainReroll = (characters) =>
-	characters.filter(({ status }) => status === 'mainReroll')
-// Get all the rerolls of an user
-const getAllRerolls = (characters) =>
-	characters.filter(({ status }) => status !== 'main')
-// Get the rerolls of a player
-const getPlayerRerolls = (player, onlyMainReroll) =>
-	onlyMainReroll
-		? getMainReroll(player.characters)
-		: getAllRerolls(player.characters)
 // Return true if the character match the description
 const fitDescription = (char, role, pClass) =>
 	role === char.role &&
 	(pClass === 'openSlot' ? char.isOpenSlot : char.role === missingRole)
+
+////////////////////////////////
+//  Manipulate player attrib  //
+////////////////////////////////
+
 // Remove a player from an attribution
 const removeFromAttrib = (player, attrib, role, pClass) =>
 	(attrib[role][pClass] = attrib[role][pClass].filter(
@@ -351,6 +330,66 @@ export const addAttribs = (attr1, attr2) => {
 	return result
 }
 
+//////////////////////
+//  Filter players  //
+//////////////////////
+
+// Get the selected players
+const getAttributed = (players) =>
+	players.filter(({ isSelected }) => isSelected)
+// The non selected players
+const getNonAttributed = (players) =>
+	players.filter(({ isSelected }) => !isSelected)
+// Get the array of benched players.
+const getBench = (players) => players.filter(({ isBenched }) => isBenched)
+// Get the array of non benched players.
+const getNonBench = (players) => players.filter(({ isBenched }) => !isBenched)
+// Get the array of benched and selected players
+const getBenchSelected = (players) =>
+	players.filter(({ isBenched, isSelected }) => isBenched && isSelected)
+// Get the array of non benched nor selected players
+const getAvaillable = (players) =>
+	players.filter(({ isBenched, isSelected }) => !isBenched && !isSelected)
+// Map an array of objects and keep only the pseudo value
+const keepPseudoOnly = (players) => players.map(({ pseudo }) => pseudo)
+
+///////////////////
+//  Fill logics  //
+///////////////////
+
+// Find players' mainCharacter to fit the roles.
+// The flag isSelected is set on selected players.
+export const fillPClassMainRatio = (players, roles, init) => {
+	const result = init || { tank: {}, heal: {}, cac: {}, dist: {} }
+	for (const player of players) {
+		const { pClass, role } = getMain(player)
+		// Get role and pClass min constraint
+		const pClassMin =
+			roles[role] !== undefined &&
+			roles[role].pClassMin !== undefined &&
+			roles[role].pClassMin[pClass]
+		// If the class is in quotas
+		if (pClassMin) {
+			if (!result[role][pClass]) result[role][pClass] = []
+			//If the quota isn't fulfielled
+			if (result[role][pClass].length < pClassMin) {
+				addToAttrib(player, result, role, pClass)
+				player.isSelected = true
+				// If the pClass quota is fulfielled but not the openSlot one.
+			} else if (isInOpenMinQuota(role, roles[role], result)) {
+				addToAttrib(player, result, role, pClass)
+				player.isSelected = true
+				player.isOpenSlot = true
+			}
+			//If the class isn't in quota and the openSlot quota isn't fulfielled.
+		} else if (roles[role] && isInOpenMinQuota(role, roles[role], result)) {
+			addToAttrib(player, result, role, pClass)
+			player.isSelected = true
+			player.isOpenSlot = true
+		}
+	}
+	return result
+}
 // Try to find a reroll of the player to replace the selected reroller
 const findAnotherReroll = (player, context) => {
 	let {
@@ -361,8 +400,6 @@ const findAnotherReroll = (player, context) => {
 		rerollerRole,
 		rerollerPClass,
 		rerollAttrib,
-		reroller,
-		goodReroll,
 	} = context
 
 	// Find a reroll to replace the current reroller.
@@ -383,7 +420,6 @@ const findAnotherReroll = (player, context) => {
 	missingCharacters[missingRole][missingPClass]--
 	return true
 }
-
 // Try to find another reroll of the reroller to match another quota
 // And replace the current by a reroll of another player.
 const findGoodReroll = (rerolls, context) => {
@@ -425,7 +461,6 @@ const findGoodReroll = (rerolls, context) => {
 		}
 	}
 }
-
 // Try to change current rerollers attributions to add more rerolls.
 const changeRerolls = (context) => {
 	let { potentialRerolls, missingPClass, nbMissing, rerollAttrib } = context
@@ -453,7 +488,6 @@ const changeRerolls = (context) => {
 		}
 	}
 }
-
 export const fillMissingMainWithRerolls = (...props) => {
 	const [potentialRerolls, reportMainAttrib, nbReroll, onlyMainReroll] = props
 	if (isEmpty(reportMainAttrib)) return false
@@ -540,7 +574,6 @@ export const fillMissingMainWithRerolls = (...props) => {
 	}
 	return { rerollAttrib, nbRerollSelected }
 }
-
 // Return the reroll Attribution that fulfiels the constraints
 export const fillRerolls = (
 	potentialRerolls,
@@ -641,7 +674,6 @@ export const fillRerolls = (
 
 	return rerollAttrib
 }
-
 // Fill the attrib with reaining players, trying to respect the max attribution per role
 // players should be ordered by benchWeight
 export const completeFillWithMain = (players, constraints, attrib) => {
@@ -696,20 +728,6 @@ export const completeFillWithMain = (players, constraints, attrib) => {
 	}
 	return { fillAttrib, overslot: nonAttributedPlayers }
 }
-
-// Get the array of benched players.
-const getBench = (players) => players.filter(({ isBenched }) => isBenched)
-// Get the array of non benched players.
-const getNonBench = (players) => players.filter(({ isBenched }) => !isBenched)
-// Get the array of benched and selected players
-const getBenchSelected = (players) =>
-	players.filter(({ isBenched, isSelected }) => isBenched && isSelected)
-// Get the array of non benched nor selected players
-const getAvaillable = (players) =>
-	players.filter(({ isBenched, isSelected }) => !isBenched && !isSelected)
-// MAp an array of objects and keep only the pseudo value
-const keepPseudoOnly = (players) => players.map(({ pseudo }) => pseudo)
-
 // Fill a team with given players and constraints.
 export const fill = (players, date, nbReroll, constraints) => {
 	//Get raid properties
