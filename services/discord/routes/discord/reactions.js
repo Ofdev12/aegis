@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const manageReactions = require('../../client.js')
 
-router.post('/', async (req, res, next) => {
+router.post('/', async (req, res) => {
 	try {
 		const reactions = await manageReactions(req.body)
 		return res.send(reactions)

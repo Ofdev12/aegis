@@ -5,10 +5,11 @@
 const Discord = require('discord.js')
 const client = new Discord.Client()
 const guild = new Discord.Guild(client)
+require('dotenv/config')
 
-const botTokken = ''
+const botToken = process.env.BOT_TOKEN
 
-client.login(botTokken)
+client.login(botToken)
 
 client.on('ready', async () => {
 	console.log(`Logged in as ${client.user.tag}`)
