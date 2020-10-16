@@ -2,7 +2,6 @@ const CLIENT_ID = '760909520884596776'
 const CLIENT_SECRET = 'jKa5QL_9LvwrdpAjDoNUKrikSlDBNM3e'
 
 export const connectFromCode = async ({ code }) => {
-	console.log(code)
 	const token = await getTokkenDiscord(code)
 	const userInfos = await getInfosUserDiscord(token)
 	return { userInfos, token }

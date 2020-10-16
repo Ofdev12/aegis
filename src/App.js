@@ -8,6 +8,7 @@ import { AdminUser } from './components/AdminUser'
 import { Raid } from './components/Raid'
 import { getInfosUserDiscord, connectFromCode } from './firebase/discord'
 import Cookies from 'js-cookie'
+import { createUser, logInFirebase, userFirebase } from './firebase/index'
 
 const redirectRoot = 'http://localhost:3000'
 const guildID = '638823950314635288'
@@ -21,17 +22,29 @@ const App = () => {
 	const login = async (cookieParsed, code) => {
 		if (cookieParsed) {
 			const userInfo = await getInfosUserDiscord(cookieParsed)
-			const user = {
+			const log = await logInFirebase({
+				email: userInfo.user.email,
+				id: userInfo.user.id,
+			})
+			if (!log) return // TODO handle error
+			console.info(`CONNECTED IN ${log.user.email}`)
+			setUserInfos({
 				...userInfo.user,
 				guild: {
 					...userInfo.guilds.filter((item) => item.id === guildID)[0],
 				},
-			}
-			setUserInfos(user)
+			})
 		} else if (!cookieParsed && code) {
 			const codeFormated = { code: window.location.search.split('=')[1] }
 			const token = await connectFromCode(codeFormated)
-			console.log('TOKEN', token)
+			const { id, email } = token.userInfos.user
+
+			const userDB = await userFirebase.get(id)
+			if (!userDB) {
+				await createUser({ email, id })
+				await userFirebase.set(id, { email })
+			}
+			// TODO: handle error
 			Cookies.set(
 				'aegis_discord',
 				{
@@ -41,14 +54,13 @@ const App = () => {
 				},
 				{ expires: 7 }
 			)
-			const user = {
+			navigate(`${redirectRoot}`)
+			setUserInfos({
 				...token.userInfos.user,
 				guild: {
 					...token.userInfos.guilds.filter((item) => item.id === guildID)[0],
 				},
-			}
-			navigate(`${redirectRoot}`)
-			setUserInfos(user)
+			})
 		} else {
 			navigate(targetBase)
 		}
@@ -67,7 +79,12 @@ const App = () => {
 	return (
 		<div className='App'>
 			<Router>
-				<Home path='/' userInfos={userInfos} login={login} />
+				<Home
+					path='/'
+					userInfos={userInfos}
+					setUserInfos={setUserInfos}
+					login={login}
+				/>
 				<Admin path='/admin'>
 					<HomeAdmin path='/' />
 					<AdminUser path='user' />
