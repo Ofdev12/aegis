@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button, Drawer, Input, Select } from 'antd'
 const { Option } = Select
 
 export const DrawerCharacter = (props) => {
-	const { visible, setVisible, character, setCharacter } = props
+	const { visible, setVisible, userInfos, setUserInfos } = props
+	const [character, setCharacter] = useState({})
+
 	const saveCharacter = () => {
-		console.log(character)
+		setUserInfos({ ...userInfos, character: { ...character } })
 	}
 	return (
 		<Drawer

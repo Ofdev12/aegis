@@ -37,12 +37,12 @@ const App = () => {
 		} else if (!cookieParsed && code) {
 			const codeFormated = { code: window.location.search.split('=')[1] }
 			const token = await connectFromCode(codeFormated)
-			const { id, email } = token.userInfos.user
-
-			const userDB = await userFirebase.get(id)
+			const { id, email, username } = token.userInfos.user
+			const data = await userFirebase.get(id)
+			const userDB = await data.data()
 			if (!userDB) {
 				await createUser({ email, id })
-				await userFirebase.set(id, { email })
+				await userFirebase.set(id, { email, username })
 			}
 			// TODO: handle error
 			Cookies.set(
@@ -54,7 +54,7 @@ const App = () => {
 				},
 				{ expires: 7 }
 			)
-			navigate(`${redirectRoot}`)
+			navigate(redirectRoot)
 			setUserInfos({
 				...token.userInfos.user,
 				guild: {
