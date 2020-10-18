@@ -9,9 +9,8 @@ import { DrawerCharacter } from './components/Drawer'
 import './Home.css'
 
 export const Home = (props) => {
-	const { userInfos, login } = props
+	const { userInfos, setUserInfos, login } = props
 	const [visible, setVisible] = useState(false)
-	const [character, setCharacter] = useState({})
 
 	return (
 		<div>
@@ -28,8 +27,8 @@ export const Home = (props) => {
 			<DrawerCharacter
 				visible={visible}
 				setVisible={setVisible}
-				character={character}
-				setCharacter={setCharacter}
+				userInfos={userInfos}
+				setUserInfos={setUserInfos}
 			/>
 		</div>
 	)
