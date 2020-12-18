@@ -6,13 +6,14 @@ import {
 	SettingOutlined,
 } from '@ant-design/icons'
 import './NavBar.css'
+
 const { SubMenu } = Menu
 
-export const NavBar = () => {
-	const [current, setCurrent] = useState('mail')
+export const NavBar = ({ userInfos, login }) => {
+	const [current, setCurrent] = useState('accueil')
 
 	const handleClick = (e) => {
-		console.log('click ', e)
+		// console.log('click ', e)
 		setCurrent(e.key)
 	}
 
@@ -23,10 +24,10 @@ export const NavBar = () => {
 			selectedKeys={[current]}
 			mode='horizontal'
 		>
-			<Menu.Item key='mail' icon={<MailOutlined />}>
+			<Menu.Item key='accueil' icon={<MailOutlined />}>
 				Accueil
 			</Menu.Item>
-			<Menu.Item key='app' icon={<AppstoreOutlined />}>
+			<Menu.Item key='articles' icon={<AppstoreOutlined />}>
 				Articles
 			</Menu.Item>
 			<SubMenu key='SubMenu' icon={<SettingOutlined />} title='Raid'>
@@ -39,10 +40,14 @@ export const NavBar = () => {
 					<Menu.Item key='setting:4'>Option 4</Menu.Item>
 				</Menu.ItemGroup>
 			</SubMenu>
-			<Menu.Item key='alipay'>
-				<a href='https://ant.design' target='_blank' rel='noopener noreferrer'>
-					Navigation Four - Link
-				</a>
+			<Menu.Item key='discord'>
+				<div
+					onClick={() => {
+						userInfos ? console.log('CONNECTED GO PROFILE') : login()
+					}}
+				>
+					{userInfos ? `Bonjour ${userInfos.username}` : 'Discord'}
+				</div>
 			</Menu.Item>
 		</Menu>
 	)
